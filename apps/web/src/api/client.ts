@@ -7,8 +7,10 @@ import type {
   MetricsSnapshot,
   PlatformCode,
   RunView,
+  ScaleResult,
   SeatsPayload,
   StartRunRequest,
+  WorkersStatus,
 } from './types'
 
 export class ApiError extends Error {
@@ -69,4 +71,8 @@ export const api = {
     request<{ buyerRate: number }>('PUT', `/api/platforms/${platform}/buyers`, { buyerRate }),
 
   resetDemo: () => request<{ seats: number }>('POST', '/api/demo/reset'),
+
+  workers: () => request<WorkersStatus>('GET', '/api/workers'),
+  scaleWorkers: (workers: number) => request<ScaleResult>('POST', '/api/workers/scale', { workers }),
+  setAutoscale: (enabled: boolean) => request<{ enabled: boolean }>('PUT', '/api/workers/autoscale', { enabled }),
 }

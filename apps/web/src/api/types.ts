@@ -219,3 +219,16 @@ export interface ApiProblem {
   status: number
   details?: string[]
 }
+
+export interface ScaleResult {
+  target: number
+  before: number
+  after: number
+  containers: string[]
+}
+
+export interface WorkersStatus {
+  workers: WorkerView[]
+  queueDepth: number
+  autoscale: { enabled: boolean; min: number; max: number }
+}

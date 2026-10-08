@@ -11,6 +11,7 @@ use App\Application\Realtime\Dto\MetricsSnapshot;
 use App\Application\Realtime\Dto\PlatformGauge;
 use App\Application\Run\RunRepository;
 use App\Application\Run\RunViewFactory;
+use App\Application\Scaling\AutoscalePolicy;
 use App\Infrastructure\Redis\RedisFactory;
 use Doctrine\DBAL\Connection;
 
@@ -73,7 +74,7 @@ final class SnapshotBuilder
             series: $series,
             platforms: $gauges,
             workers: $this->workers->all(),
-            autoscale: ['enabled' => '1' === $redis->get('autoscale:enabled'), 'min' => 1, 'max' => 16, 'lastDecision' => \is_string($decision) ? $decision : null],
+            autoscale: ['enabled' => '1' === $redis->get('autoscale:enabled'), 'min' => AutoscalePolicy::MIN, 'max' => AutoscalePolicy::MAX, 'lastDecision' => \is_string($decision) ? $decision : null],
         );
     }
 }

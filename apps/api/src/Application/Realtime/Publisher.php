@@ -6,6 +6,7 @@ namespace App\Application\Realtime;
 
 use App\Application\Run\RunRepository;
 use App\Application\Run\RunViewFactory;
+use App\Application\Scaling\AutoscalePolicy;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\Mercure\HubInterface;
 use Symfony\Component\Mercure\Update;
@@ -33,6 +34,7 @@ final class Publisher
         private readonly RunRepository $runs,
         private readonly RunViewFactory $runViews,
         private readonly HubInterface $hub,
+        private readonly AutoscalePolicy $autoscale,
         private readonly LoggerInterface $logger,
     ) {
     }
@@ -49,6 +51,7 @@ final class Publisher
         $eventsThisSecond = 0;
         $lastSecond = (int) microtime(true);
         $lastMetricsAt = 0.0;
+        $lastAutoscaleAt = 0.0;
         $jobsPerSec = 0.0;
         $eventsPerSec = 0;
         $ticks = 0;
@@ -113,6 +116,15 @@ final class Publisher
                 }
                 $this->publish(Topics::METRICS, $snapshot);
                 $lastMetricsAt = $now;
+            }
+
+            if ($now - $lastAutoscaleAt >= 5.0) {
+                $lastAutoscaleAt = $now;
+                try {
+                    $this->autoscale->tick();
+                } catch (\Throwable $e) {
+                    $this->logger->error('autoscale tick failed: {error}', ['error' => $e->getMessage()]);
+                }
             }
 
             $elapsedMs = (int) ((microtime(true) - $tickStart) * 1000);
