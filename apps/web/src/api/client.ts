@@ -63,10 +63,13 @@ export const api = {
   },
 
   job: (id: number) => request<JobDetail>('GET', `/api/jobs/${id}`),
+  ticketJob: (ticketId: number) => request<JobDetail>('GET', `/api/tickets/${ticketId}/job`),
   retryJob: (id: number) => request<{ requeued: number }>('POST', `/api/jobs/${id}/retry`),
 
   setChaos: (platform: PlatformCode | 'all', failureRate: number) =>
     request<{ failureRate: number }>('PUT', `/api/platforms/${platform}/chaos`, { failureRate }),
+  setRateLimit: (platform: PlatformCode | 'all', rpm: number) => request<{ rpm: number }>('PUT', `/api/platforms/${platform}/rate-limit`, { rpm }),
+  setPacing: (follow: boolean) => request<{ follow: boolean }>('PUT', '/api/platforms/pacing', { follow }),
   setBuyers: (platform: PlatformCode | 'all', buyerRate: number) =>
     request<{ buyerRate: number }>('PUT', `/api/platforms/${platform}/buyers`, { buyerRate }),
 

@@ -92,6 +92,6 @@ const style = computed(() => {
       <dt class="text-muted">Section</dt>
       <dd>{{ section?.code }} · {{ section?.tier }} · {{ section?.status }}</dd>
     </dl>
-    <p class="mt-2 text-[10px] text-muted">click: select seat · shift+click: add · click a label: whole section</p>
+    <p class="mt-2 text-[10px] text-muted">click: seat · shift+click: add · shift+drag: box · label: section · right-click: trace</p>
   </div>
 </template>

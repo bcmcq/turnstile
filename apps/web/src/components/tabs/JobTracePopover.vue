@@ -6,8 +6,10 @@ import Button from '@/components/ui/Button.vue'
 import { fmtMs, outcomeLabel } from '@/lib/format'
 import { useToastsStore } from '@/stores/toasts'
 
+/** Open by job id (Failed tab) or by ticket id (seat map, Events tab): the latest job that touched the seat. */
 const props = defineProps<{
-  jobId: number
+  jobId?: number
+  ticketId?: number
 }>()
 const emit = defineEmits<{
   close: []
@@ -20,7 +22,7 @@ const busy = ref(false)
 
 onMounted(async () => {
   try {
-    detail.value = await api.job(props.jobId)
+    detail.value = props.jobId !== undefined ? await api.job(props.jobId) : await api.ticketJob(props.ticketId ?? 0)
   } catch (e) {
     toasts.fromError(e)
     emit('close')
@@ -54,10 +56,12 @@ function colorFor(outcome: string | null): string {
 }
 
 async function retry(): Promise<void> {
+  const id = detail.value?.job.id
+  if (id === undefined) return
   busy.value = true
   try {
-    await api.retryJob(props.jobId)
-    toasts.push('success', `Job ${props.jobId} re-queued with 5 more attempts`)
+    await api.retryJob(id)
+    toasts.push('success', `Job ${id} re-queued with 5 more attempts`)
     emit('retried')
     emit('close')
   } catch (e) {
@@ -71,7 +75,7 @@ async function retry(): Promise<void> {
 <template>
   <div class="absolute inset-x-2 bottom-2 z-20 rounded-xl border border-border bg-panel-2 p-3 shadow-[0_12px_30px_rgba(0,0,0,0.5)]">
     <div class="flex items-center justify-between">
-      <span class="text-xs font-semibold">Retry trace · job {{ jobId }}</span>
+      <span class="text-xs font-semibold">Retry trace · {{ detail ? `job ${detail.job.id}` : 'loading…' }}</span>
       <button type="button" class="text-muted hover:text-fg" aria-label="Close" @click="emit('close')">×</button>
     </div>
     <p v-if="detail" class="mt-0.5 text-[11px] text-muted">

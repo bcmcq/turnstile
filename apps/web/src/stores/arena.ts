@@ -66,6 +66,12 @@ export const useArenaStore = defineStore('arena', () => {
     if (!additive) selectedSections.value = new Set()
   }
 
+  /** Box select: replace or extend the seat selection with many tickets at once. */
+  function selectTickets(ids: number[], additive: boolean): void {
+    selectedTickets.value = new Set(additive ? [...selectedTickets.value, ...ids] : ids)
+    if (!additive) selectedSections.value = new Set()
+  }
+
   function setSections(ids: number[]): void {
     selectedSections.value = new Set(ids)
   }
@@ -86,6 +92,8 @@ export const useArenaStore = defineStore('arena', () => {
   return {
     bootstrap, seats, seatsError, loadSeats, sections, platforms, sectionById, platformById, platformByCode, seatCount, arenaSize,
     selectedSections, selectedTickets, selectedSeatTotal, selectionSummary, focus,
-    setBootstrap, toggleSection, toggleTicket, setSections, clearSelection, focusSections, platformColor,
+    setBootstrap, toggleSection, toggleTicket, selectTickets, setSections, clearSelection, focusSections, platformColor,
   }
 })
+
+if (import.meta.hot) import.meta.hot.accept(acceptHMRUpdate(useArenaStore, import.meta.hot))

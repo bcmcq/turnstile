@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { gsap } from 'gsap'
-import { computed, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import SeatTooltip from '@/components/arena/SeatTooltip.vue'
+import JobTracePopover from '@/components/tabs/JobTracePopover.vue'
 import { useArenaCanvas } from '@/composables/useArenaCanvas'
 import { useArenaInteraction } from '@/composables/useArenaInteraction'
 import { useSeatAnimations } from '@/composables/useSeatAnimations'
@@ -80,15 +81,38 @@ function drawSelection(ctx: CanvasRenderingContext2D, view: { scale: number; off
     ctx.fillText(label, lx, ly)
   }
 
+  // box select in progress
+  const b = pick.box.value
+  if (b) {
+    const x = Math.min(b.x0, b.x1)
+    const y = Math.min(b.y0, b.y1)
+    const w = Math.abs(b.x1 - b.x0)
+    const h = Math.abs(b.y1 - b.y0)
+    ctx.fillStyle = COLORS.cyan
+    ctx.globalAlpha = 0.1
+    ctx.fillRect(x, y, w, h)
+    ctx.globalAlpha = 1
+    ctx.strokeStyle = COLORS.cyan
+    ctx.lineWidth = 1
+    ctx.setLineDash([4, 3])
+    ctx.strokeRect(x + 0.5, y + 0.5, w, h)
+    ctx.setLineDash([])
+  }
+
   // selected seats: cyan ring; hovered seat: white ring
   ctx.lineWidth = 1
   if (arena.selectedTickets.size) {
     ctx.strokeStyle = COLORS.cyan
+    ctx.fillStyle = COLORS.cyan
     for (const id of arena.selectedTickets) {
       const i = seats.indexOf(id)
       if (i === undefined) continue
       const x = seats.x[i] * view.scale + view.offsetX
       const y = seats.y[i] * view.scale + view.offsetY
+      // ring plus a wash so a picked seat still reads at fit scale, where the ring is a pixel wide
+      ctx.globalAlpha = 0.35
+      fillSeat(ctx, x - half - 0.5, y - half - 0.5, s + 1, s + 1)
+      ctx.globalAlpha = 1
       ctx.strokeRect(x - half - 2, y - half - 2, s + 4, s + 4)
     }
   }
@@ -106,17 +130,69 @@ function canvasPoint(e: PointerEvent | MouseEvent): [number, number] {
   return [e.clientX - r.left, e.clientY - r.top]
 }
 
+const traceTicket = ref<number | null>(null)
+
+// crosshair while shift is held so the box-select affordance shows before the drag starts
+const shiftHeld = ref(false)
+function onKey(e: KeyboardEvent): void {
+  if (e.key === 'Shift') shiftHeld.value = e.type === 'keydown'
+}
+function onBlur(): void {
+  shiftHeld.value = false
+}
+onMounted(() => {
+  window.addEventListener('keydown', onKey)
+  window.addEventListener('keyup', onKey)
+  window.addEventListener('blur', onBlur)
+})
+onBeforeUnmount(() => {
+  window.removeEventListener('keydown', onKey)
+  window.removeEventListener('keyup', onKey)
+  window.removeEventListener('blur', onBlur)
+})
+const cursorClass = computed(() => (pick.box.value || shiftHeld.value ? 'cursor-crosshair' : 'cursor-grab active:cursor-grabbing'))
+
+function onDown(e: PointerEvent): void {
+  if (e.button === 0 && e.shiftKey) {
+    // shift+drag draws a selection box instead of panning
+    const [x, y] = canvasPoint(e)
+    pick.beginBox(x, y)
+    ;(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId)
+    return
+  }
+  map.onPointerDown(e)
+}
+
 function onMove(e: PointerEvent): void {
-  map.onPointerMove(e)
   const [x, y] = canvasPoint(e)
+  if (pick.box.value) {
+    pick.updateBox(x, y)
+    return
+  }
+  map.onPointerMove(e)
   pick.onPointerMove(x, y)
 }
 
 function onUp(e: PointerEvent): void {
+  if (pick.box.value) {
+    if (!pick.endBox(true)) {
+      const [x, y] = canvasPoint(e)
+      pick.onClick(x, y, true)
+    }
+    return
+  }
   const dragged = map.onPointerUp()
   if (dragged || e.button !== 0) return
   const [x, y] = canvasPoint(e)
   pick.onClick(x, y, e.shiftKey)
+}
+
+/** Right-click a seat: attempt trace of the latest job that touched it. */
+function onContextMenu(e: MouseEvent): void {
+  e.preventDefault()
+  const [x, y] = canvasPoint(e)
+  const ticketId = pick.seatAt(x, y)
+  if (ticketId !== null) traceTicket.value = ticketId
 }
 
 const fx = useSeatAnimations({
@@ -183,15 +259,18 @@ defineExpose({ map })
   <div ref="container" class="relative min-h-0 flex-1 overflow-hidden rounded-lg">
     <canvas
       ref="canvas"
-      class="block cursor-grab touch-none select-none active:cursor-grabbing"
+      class="block touch-none select-none"
+      :class="cursorClass"
       @wheel="map.onWheel"
-      @pointerdown="map.onPointerDown"
+      @pointerdown="onDown"
       @pointermove="onMove"
       @pointerup="onUp"
       @pointercancel="map.onPointerUp"
       @pointerleave="pick.onPointerLeave"
       @dblclick="map.fit(true)"
+      @contextmenu="onContextMenu"
     />
+    <JobTracePopover v-if="traceTicket !== null" :ticket-id="traceTicket" @close="traceTicket = null" />
     <SeatTooltip
       v-if="pick.hover.value && arena.seats"
       :seats="arena.seats"

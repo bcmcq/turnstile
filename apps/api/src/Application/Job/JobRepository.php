@@ -21,6 +21,12 @@ final readonly class JobRepository
         return $this->rows('id = ?', [$id])[0] ?? null;
     }
 
+    /** Most recent job that touched a ticket, for the trace popover from the seat map. */
+    public function latestForTicket(int $ticketId): ?JobRow
+    {
+        return $this->rows('ticket_id = ?', [$ticketId], 'ORDER BY id DESC LIMIT 1')[0] ?? null;
+    }
+
     /**
      * @param list<array{id: int, ticketId: int, platformId: int|null}> $rows
      */

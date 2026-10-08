@@ -44,7 +44,7 @@ async function retryAll(): Promise<void> {
 </script>
 
 <template>
-  <Panel class="flex-1">
+  <Panel class="relative flex-1 overflow-hidden">
     <template #header>
       <div class="flex w-full items-center gap-1">
         <button

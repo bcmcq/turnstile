@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
+import JobTracePopover from '@/components/tabs/JobTracePopover.vue'
 import Chip from '@/components/ui/Chip.vue'
 import type { ChipTone } from '@/components/ui/Chip.vue'
 import Label from '@/components/ui/Label.vue'
@@ -20,6 +21,7 @@ const log = useLogStore()
 const metrics = useMetricsStore()
 const run = useRunStore()
 
+const traceTicket = ref<number | null>(null)
 const rows = computed(() => log.events.slice(0, ROWS).map((e, i) => ({ key: `${e.ts}-${i}`, time: fmtEventTime(e.ts), ...describeEvent(e), raw: e })))
 const ticker = computed(() => log.events.slice(0, TICKER).map((e, i) => ({ key: `${e.ts}-${i}`, type: e.type, tone: describeEvent(e).tone })))
 
@@ -74,12 +76,13 @@ function platformName(code: string | null, ticketId: number | null): string {
         <span class="w-[74px] shrink-0 text-[10px] text-muted tabular-nums">{{ r.time }}</span>
         <Chip v-if="platformTone(r.platform, r.ticketId)" :label="platformName(r.platform, r.ticketId)" :tone="platformTone(r.platform, r.ticketId) ?? 'muted'" />
         <span class="min-w-0 flex-1 truncate font-medium" :class="toneClass[r.tone]" :title="r.text">{{ r.text }}</span>
-        <span v-if="r.ticketId !== null" class="shrink-0 text-[10px] text-muted tabular-nums">TKT-{{ r.ticketId }}</span>
+        <button v-if="r.ticketId !== null" type="button" class="shrink-0 text-[10px] text-muted tabular-nums hover:text-tixhub" :title="`Attempt trace for ticket ${r.ticketId}`" @click="traceTicket = r.ticketId">TKT-{{ r.ticketId }}</button>
         <span v-if="r.attempt" class="w-8 shrink-0 text-right text-[10px] text-muted tabular-nums">{{ r.attempt }}</span>
       </li>
       <li v-if="rows.length === 0" class="py-6 text-center text-[11px] text-muted">Start a run to see the event stream.</li>
     </ul>
     <p class="text-[10px] text-muted">Idempotency key = ticket + run · a replayed job finds the key and exits without calling the platform</p>
+    <JobTracePopover v-if="traceTicket !== null" :ticket-id="traceTicket" @close="traceTicket = null" />
   </div>
 </template>
 

@@ -24,11 +24,20 @@ export interface ArenaInteractionOptions {
 const SECTION_PICK_UNITS = 14
 const LABEL_PICK_PX = 16
 
-/** Hover → nearest seat; click → seat, section label, or the section under the pointer. Shift adds. */
+export interface BoxState {
+  /** CSS px within the canvas */
+  x0: number
+  y0: number
+  x1: number
+  y1: number
+}
+
+/** Hover → nearest seat; click → seat, section label, or the section under the pointer; shift+drag → box. Shift adds. */
 export function useArenaInteraction(opts: ArenaInteractionOptions) {
   const arena = useArenaStore()
   const hover = ref<HoverState | null>(null)
   const hoveredSection = ref<number | null>(null)
+  const box = ref<BoxState | null>(null)
   let grid: SpatialGrid | null = null
   const state = reactive({ gridReady: false })
 
@@ -98,5 +107,48 @@ export function useArenaInteraction(opts: ArenaInteractionOptions) {
     }
   }
 
-  return { hover, hoveredSection, onPointerMove, onPointerLeave, onClick, state }
+  function beginBox(sx: number, sy: number): void {
+    box.value = { x0: sx, y0: sy, x1: sx, y1: sy }
+    hover.value = null
+  }
+
+  function updateBox(sx: number, sy: number): void {
+    if (!box.value) return
+    box.value = { ...box.value, x1: sx, y1: sy }
+    opts.requestFrame()
+  }
+
+  /** Select every seat inside the box; a box smaller than a few pixels is treated as a click. */
+  function endBox(additive: boolean): boolean {
+    const b = box.value
+    box.value = null
+    const seats = opts.seats()
+    if (!b || !seats) return false
+    if (Math.abs(b.x1 - b.x0) < 4 && Math.abs(b.y1 - b.y0) < 4) {
+      opts.requestFrame()
+      return false
+    }
+    const [ax, ay] = opts.toUnit(Math.min(b.x0, b.x1), Math.min(b.y0, b.y1))
+    const [bx, by] = opts.toUnit(Math.max(b.x0, b.x1), Math.max(b.y0, b.y1))
+    const ids: number[] = []
+    for (let i = 0; i < seats.size; i++) {
+      const x = seats.x[i]
+      const y = seats.y[i]
+      if (x >= ax && x <= bx && y >= ay && y <= by) ids.push(seats.ticketId[i])
+    }
+    arena.selectTickets(ids, additive)
+    opts.requestFrame()
+    return true
+  }
+
+  /** Seat under the pointer, if any (for the trace popover). */
+  function seatAt(sx: number, sy: number): number | null {
+    const seats = opts.seats()
+    if (!grid || !seats) return null
+    const [ux, uy] = opts.toUnit(sx, sy)
+    const seat = grid.nearest(ux, uy, seatPickRadius())
+    return seat >= 0 ? seats.ticketId[seat] : null
+  }
+
+  return { hover, hoveredSection, box, onPointerMove, onPointerLeave, onClick, beginBox, updateBox, endBox, seatAt, state }
 }
