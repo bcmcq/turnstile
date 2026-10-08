@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import { useArenaCanvas } from '@/composables/useArenaCanvas'
+import { useSeatAnimations } from '@/composables/useSeatAnimations'
 import { SeatPalette } from '@/lib/arenaPalette'
 import { useArenaStore } from '@/stores/arena'
 
@@ -17,6 +18,16 @@ const map = useArenaCanvas({
   seats: () => arena.seats,
   sections: () => arena.sections,
   palette: () => palette.value,
+  overlay: (ctx, view) => fx.draw(ctx, view, map.seatPx()),
+})
+
+const fx = useSeatAnimations({
+  seats: () => arena.seats,
+  palette: () => palette.value,
+  markSeatsDirty: (i) => map.markSeatsDirty(i),
+  requestFrame: () => map.requestFrame(),
+  arenaWidth: arena.arenaSize.width,
+  arenaHeight: arena.arenaSize.height,
 })
 
 watch(() => arena.seats, () => map.invalidate())

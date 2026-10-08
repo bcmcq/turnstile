@@ -1,6 +1,7 @@
 import { onMounted, ref } from 'vue'
 import { api } from '@/api/client'
 import { useMercure } from '@/composables/useMercure'
+import { liveBus } from '@/lib/liveBus'
 import { useArenaStore } from '@/stores/arena'
 import { useLogStore } from '@/stores/log'
 import { useMetricsStore } from '@/stores/metrics'
@@ -21,18 +22,22 @@ export function useDashboard() {
       metrics.set(s)
       if (s.run) run.set(s.run)
     },
-    seats: () => {
-      /* wired in 4.3 */
+    seats: (b) => liveBus.emit('seats', b.rows),
+    log: (b) => {
+      log.push(b.events)
+      liveBus.emit('log', b.events)
     },
-    log: (b) => log.push(b.events),
     run: (u) => {
       if ('reset' in u) {
         run.set(null)
         log.clear()
         void arena.loadSeats()
+        liveBus.emit('reset', undefined)
         onReset.value?.()
       } else {
+        const wasStarted = run.current?.id === u.id && run.current.status !== 'pending' && run.current.status !== 'dispatching'
         run.set(u)
+        if (u.status === 'running' && !wasStarted) liveBus.emit('runStarted', u)
       }
     },
   })

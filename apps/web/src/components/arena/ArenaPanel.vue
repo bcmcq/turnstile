@@ -4,8 +4,10 @@ import Chip from '@/components/ui/Chip.vue'
 import Panel from '@/components/ui/Panel.vue'
 import { fmtInt } from '@/lib/format'
 import { useArenaStore } from '@/stores/arena'
+import { useRunStore } from '@/stores/run'
 
 const arena = useArenaStore()
+const run = useRunStore()
 </script>
 
 <template>
@@ -21,7 +23,7 @@ const arena = useArenaStore()
     <ArenaCanvas />
     <footer class="mt-2 flex items-center justify-between text-[11px]">
       <span class="text-muted">Selected: {{ arena.selectedSections.size }} sections + {{ arena.selectedTickets.size }} seats · {{ fmtInt(arena.selectedSeatTotal) }} tickets</span>
-      <span class="font-medium">&nbsp;</span>
+      <span v-if="run.current" class="font-medium tabular-nums">{{ fmtInt(run.current.counters.completed) }} moved · {{ fmtInt(run.current.counters.in_flight) }} in flight · {{ fmtInt(run.current.counters.dead_lettered) }} failed</span>
     </footer>
   </Panel>
 </template>
