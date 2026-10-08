@@ -53,6 +53,7 @@ const startRun = () =>
       reprice: action.value === 'reprice' ? { mode: repriceMode.value, delta: repriceDelta.value } : null,
     })
     toasts.push('success', `Run #${view.number} started · ${runTypeLabel[view.type]}`)
+    arena.clearSelection() // the run owns those seats now; the map shows their state, not the pick
   })
 const pauseOrResume = () => guarded(() => (run.isPaused ? run.resume() : run.pause()))
 // Two-click confirms instead of window.confirm: friendlier on video, and no native dialog to fight.

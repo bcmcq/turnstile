@@ -1,4 +1,4 @@
-import { defineStore } from 'pinia'
+import { acceptHMRUpdate, defineStore } from 'pinia'
 import { computed, ref, shallowRef } from 'vue'
 import { api } from '@/api/client'
 import type { RunStatus, RunView, StartRunRequest } from '@/api/types'
@@ -51,3 +51,5 @@ export const useRunStore = defineStore('run', () => {
 
   return { current, busy, isActive, isPaused, terminal, progress, remaining, set, start, pause, resume, cancel, replay }
 })
+
+if (import.meta.hot) import.meta.hot.accept(acceptHMRUpdate(useRunStore, import.meta.hot))

@@ -1,4 +1,4 @@
-import { defineStore } from 'pinia'
+import { acceptHMRUpdate, defineStore } from 'pinia'
 import { ref, shallowRef } from 'vue'
 import type { LogEvent } from '@/api/types'
 
@@ -22,3 +22,5 @@ export const useLogStore = defineStore('log', () => {
 
   return { events, total, push, clear }
 })
+
+if (import.meta.hot) import.meta.hot.accept(acceptHMRUpdate(useLogStore, import.meta.hot))

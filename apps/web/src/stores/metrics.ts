@@ -1,4 +1,4 @@
-import { defineStore } from 'pinia'
+import { acceptHMRUpdate, defineStore } from 'pinia'
 import { computed, shallowRef } from 'vue'
 import type { MetricsSnapshot, PlatformGauge, SeriesName, WorkerView } from '@/api/types'
 
@@ -23,3 +23,5 @@ export const useMetricsStore = defineStore('metrics', () => {
 
   return { snapshot, jobsPerSec, eventsPerSec, counts, workers, platforms, series, autoscale, chaosRate, buyersOn, set }
 })
+
+if (import.meta.hot) import.meta.hot.accept(acceptHMRUpdate(useMetricsStore, import.meta.hot))

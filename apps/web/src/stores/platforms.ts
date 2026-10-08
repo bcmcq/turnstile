@@ -1,4 +1,4 @@
-import { defineStore } from 'pinia'
+import { acceptHMRUpdate, defineStore } from 'pinia'
 import { ref } from 'vue'
 import { api } from '@/api/client'
 import type { PlatformCode } from '@/api/types'
@@ -27,3 +27,5 @@ export const usePlatformsStore = defineStore('platforms', () => {
 
   return { saving, setChaos, setBuyers }
 })
+
+if (import.meta.hot) import.meta.hot.accept(acceptHMRUpdate(usePlatformsStore, import.meta.hot))

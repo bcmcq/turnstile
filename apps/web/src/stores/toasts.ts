@@ -1,4 +1,4 @@
-import { defineStore } from 'pinia'
+import { acceptHMRUpdate, defineStore } from 'pinia'
 import { ref } from 'vue'
 import { ApiError } from '@/api/client'
 
@@ -31,3 +31,5 @@ export const useToastsStore = defineStore('toasts', () => {
 
   return { toasts, push, dismiss, fromError }
 })
+
+if (import.meta.hot) import.meta.hot.accept(acceptHMRUpdate(useToastsStore, import.meta.hot))

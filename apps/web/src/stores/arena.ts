@@ -1,4 +1,4 @@
-import { defineStore } from 'pinia'
+import { acceptHMRUpdate, defineStore } from 'pinia'
 import { computed, ref, shallowRef } from 'vue'
 import { api } from '@/api/client'
 import type { ArenaBootstrap, PlatformCode, PlatformView, SectionView } from '@/api/types'
