@@ -1,0 +1,11 @@
+# Local development: bind-mount the Symfony app so edits apply without a rebuild.
+services:
+  api:
+    volumes:
+      - ./apps/api:/app
+      - api-vendor:/app/vendor
+      - api-var:/app/var
+
+volumes:
+  api-vendor:
+  api-var:

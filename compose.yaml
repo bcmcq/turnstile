@@ -1,5 +1,27 @@
 name: turnstile
 
+x-api-image: &api-image
+  build:
+    context: .
+    dockerfile: docker/api/Dockerfile
+  image: turnstile/api
+  environment: &api-env
+    APP_ENV: dev
+    APP_SECRET: turnstile-dev-secret
+    DATABASE_URL: mysql://${MYSQL_USER}:${MYSQL_PASSWORD}@mysql:3306/${MYSQL_DATABASE}?serverVersion=8.4&charset=utf8mb4
+    REDIS_URL: redis://redis:6379
+    MESSENGER_TRANSPORT_DSN: redis://redis:6379/messages
+    MERCURE_URL: http://api:8080/.well-known/mercure
+    MERCURE_PUBLIC_URL: http://localhost:8080/.well-known/mercure
+    MERCURE_JWT_SECRET: ${MERCURE_PUBLISHER_JWT_KEY}
+    MERCURE_PUBLISHER_JWT_KEY: ${MERCURE_PUBLISHER_JWT_KEY}
+    MERCURE_SUBSCRIBER_JWT_KEY: ${MERCURE_SUBSCRIBER_JWT_KEY}
+  depends_on:
+    mysql:
+      condition: service_healthy
+    redis:
+      condition: service_healthy
+
 services:
   mysql:
     image: mysql:8.4
@@ -25,6 +47,19 @@ services:
       interval: 3s
       timeout: 3s
       retries: 20
+
+  api:
+    <<: *api-image
+    environment:
+      <<: *api-env
+      TURNSTILE_ROLE: api
+    ports:
+      - "8080:8080"
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8080/api/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
 
 volumes:
   mysql-data:
