@@ -60,6 +60,8 @@ export function useArenaCanvas(opts: ArenaCanvasOptions) {
   function fit(animated = false): void {
     const el = opts.container.value
     if (!el) return
+    // a layout shift mid-tween (the first data load resizes the panel) retargets the tween instead of snapping
+    const live = gsap.getTweensOf(view)[0]
     gsap.killTweensOf(view)
     view.width = el.clientWidth
     view.height = el.clientHeight
@@ -68,6 +70,10 @@ export function useArenaCanvas(opts: ArenaCanvasOptions) {
     const offsetX = (view.width - opts.arenaWidth * scale) / 2
     const offsetY = (view.height - opts.arenaHeight * scale) / 2
     resizeCanvases()
+    if (live) {
+      animateView(scale, offsetX, offsetY, live.duration() - live.time(), live.vars.ease)
+      return
+    }
     if (animated) {
       animateView(scale, offsetX, offsetY)
       return
@@ -80,19 +86,28 @@ export function useArenaCanvas(opts: ArenaCanvasOptions) {
   }
 
   /** Tween the view transform; every frame re-renders the base layer, which is cheap at this seat count. */
-  function animateView(scale: number, offsetX: number, offsetY: number): void {
+  function animateView(scale: number, offsetX: number, offsetY: number, duration = 0.5, ease: gsap.TweenVars['ease'] = 'power3.out'): void {
     gsap.killTweensOf(view)
     gsap.to(view, {
       scale,
       offsetX,
       offsetY,
-      duration: 0.5,
-      ease: 'power3.out',
+      duration,
+      ease,
       onUpdate: () => {
         baseDirty = true
         requestFrame()
       },
     })
+  }
+
+  /** Jump in on the floor and ease back out to the fit; paced to the seat reveal wave. */
+  function pullBack(factor = 1.2, duration = 2): void {
+    const centred = (scale: number): [number, number] => [(view.width - opts.arenaWidth * scale) / 2, (view.height - opts.arenaHeight * scale) / 2]
+    gsap.killTweensOf(view)
+    view.scale = view.fitScale * factor
+    ;[view.offsetX, view.offsetY] = centred(view.scale)
+    animateView(view.fitScale, ...centred(view.fitScale), duration, 'expo.out')
   }
 
   /** Zoom so the given arena-unit box fills the panel with some padding, capped at max zoom. */
@@ -228,7 +243,8 @@ export function useArenaCanvas(opts: ArenaCanvasOptions) {
     frameRequested = false
     const c = opts.canvas.value
     const ctx = c?.getContext('2d')
-    if (!c || !ctx) return
+    // the container has no layout yet on the very first frame; drawImage throws on a 0×0 source
+    if (!c || !ctx || base.width === 0 || base.height === 0) return
     if (baseDirty) renderBase()
     else repaintDirtySeats()
     ctx.setTransform(1, 0, 0, 1, 0, 0)
@@ -317,5 +333,5 @@ export function useArenaCanvas(opts: ArenaCanvasOptions) {
 
   onBeforeUnmount(() => observer?.disconnect())
 
-  return { view, toUnit, toScreen, seatPx, fit, zoomIn, zoomOut, zoomToBounds, invalidate, markSeatsDirty, requestFrame, onWheel, onPointerDown, onPointerMove, onPointerUp }
+  return { view, toUnit, toScreen, seatPx, fit, pullBack, zoomIn, zoomOut, zoomToBounds, invalidate, markSeatsDirty, requestFrame, onWheel, onPointerDown, onPointerMove, onPointerUp }
 }

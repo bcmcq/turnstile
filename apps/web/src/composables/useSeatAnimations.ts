@@ -36,9 +36,13 @@ export interface SeatAnimationOptions {
   arenaHeight: number
 }
 
-const REVEAL_MS = 1_600
-const REVEAL_POP_MS = 420
-const REVEAL_STEPS = 6
+const REVEAL_MS = 1_800
+const REVEAL_POP_MS = 700
+const REVEAL_STEPS = 16
+/** The wavefront bursts out of the floor and settles at the rim. */
+const REVEAL_WAVE = gsap.parseEase('power2.out')
+/** Each seat pops to ~1.7×, undershoots, then settles at 1×; sampled at REVEAL_STEPS points. */
+const REVEAL_POP = gsap.parseEase('elastic.out(2.2, 0.55)')
 const SWEEP_BAND = 0.08 // fraction of the queue lit brightly at the sweep front
 
 /**
@@ -354,7 +358,7 @@ export function useSeatAnimations(opts: SeatAnimationOptions) {
   }
 
   function revealReach(t: number): number {
-    return t * (revealMax + bandUnits())
+    return REVEAL_WAVE(t) * (revealMax + bandUnits())
   }
 
   function lowerBound(d: number): number {
@@ -498,8 +502,8 @@ export function useSeatAnimations(opts: SeatAnimationOptions) {
     ctx.globalAlpha = 1
 
     if (reveal && revealOrder && revealDist) {
-      // Seats within one pop-duration of the wavefront: scale 2.4× → 1×, fade in, final color. Progress is
-      // quantized into a few steps so the band is a handful of path fills, not one per seat.
+      // Seats within one pop-duration of the wavefront ride REVEAL_POP in their final color, with a white
+      // flash while overshooting. Progress is quantized so the band is a handful of path fills, not one per seat.
       const t = Math.min(1, (performance.now() - reveal.start) / reveal.duration)
       const reach = revealReach(t)
       const band = bandUnits()
@@ -518,12 +522,17 @@ export function useSeatAnimations(opts: SeatAnimationOptions) {
       for (const [key, list] of buckets) {
         const step = key % REVEAL_STEPS
         const p = (step + 0.5) / REVEAL_STEPS
-        const grow = 1 + 1.4 * (1 - p) * (1 - p)
-        ctx.globalAlpha = 0.25 + 0.75 * p
+        const grow = REVEAL_POP(p)
+        ctx.globalAlpha = Math.min(1, 0.4 + 2 * p)
         ctx.fillStyle = palette.colors[(key - step) / REVEAL_STEPS]
         ctx.beginPath()
         for (const i of list) square(sx(i), sy(i), grow)
         ctx.fill()
+        if (grow > 1.05) {
+          ctx.globalAlpha = 0.5 * (grow - 1)
+          ctx.fillStyle = COLORS.fg
+          ctx.fill()
+        }
       }
       ctx.globalAlpha = 1
     }

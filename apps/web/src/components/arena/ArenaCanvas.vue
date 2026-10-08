@@ -245,7 +245,10 @@ watch(
 
 watch(() => arena.seats, (seats) => {
   map.invalidate()
-  if (seats) fx.revealSeats()
+  if (seats) {
+    fx.revealSeats()
+    map.pullBack()
+  }
 })
 watch(() => arena.sections.map((s) => s.status).join(), () => map.requestFrame())
 watch([() => arena.selectedSections, () => arena.selectedTickets, () => run.isActive], () => map.requestFrame())
