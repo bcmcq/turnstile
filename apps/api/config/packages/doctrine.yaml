@@ -19,11 +19,8 @@ doctrine:
                 prefix: 'App\Domain'
                 alias: App
 
-when@test:
-    doctrine:
-        dbal:
-            # "TEST_TOKEN" is typically set by ParaTest
-            dbname_suffix: '_test%env(default::TEST_TOKEN)%'
+# Tests run against the seeded dev database inside a rolled-back transaction (see tests/Http/ApiCase.php):
+# the compose MySQL user only has rights on that one schema, so there is no "_test" suffix here.
 
 when@prod:
     doctrine:
