@@ -15,6 +15,7 @@ use App\Application\Platform\PlatformClientRegistry;
 use App\Application\Platform\PlatformFailure;
 use App\Application\Platform\PlatformRepository;
 use App\Application\Realtime\EventRecorder;
+use App\Application\Realtime\PlatformStats;
 use App\Application\Realtime\RunCounters;
 use App\Application\Realtime\WorkerHeartbeat;
 use App\Application\Run\RunFinalizer;
@@ -57,6 +58,7 @@ final class ProcessTicketJobHandler
         private readonly WorkerHeartbeat $heartbeat,
         private readonly RunCounters $counters,
         private readonly EventRecorder $events,
+        private readonly PlatformStats $platformStats,
         private readonly RunFinalizer $finalizer,
         private readonly MessageBusInterface $bus,
         private readonly LoggerInterface $logger,
@@ -139,6 +141,10 @@ final class ProcessTicketJobHandler
             $change = $this->appliers->for($action)->apply(new JobContext($run, $ticket, $key, $this->clients, $this->platforms));
             $step('platform');
             $latencyMs = $steps['platform'];
+            if (null !== $platformCode) {
+                $this->platformStats->incr($platformCode, 'calls');
+                $this->platformStats->incr($platformCode, 'ok');
+            }
 
             // 5. Optimistic lock.
             if (!$change->isNoop() && !$this->tickets->apply($ticket, $change, $run->id)) {
@@ -163,6 +169,15 @@ final class ProcessTicketJobHandler
                 $this->logger->warning('slow job {job}: {steps}', ['job' => $job->id, 'steps' => json_encode($steps)]);
             }
         } catch (PlatformApiException $e) {
+            if (null !== $platformCode) {
+                $this->platformStats->incr($platformCode, 'calls');
+                $this->platformStats->incr($platformCode, match ($e->failure) {
+                    PlatformFailure::RateLimited => 'http_429',
+                    PlatformFailure::ServerError => 'http_5xx',
+                    PlatformFailure::Timeout => 'timeouts',
+                    default => 'rejected',
+                });
+            }
             $this->failAttempt($job->id, $run->id, $ticket, $attemptNo, $job->maxAttempts, $e->failure->outcome(), $e->httpStatus, $e->latencyMs, $e->retryAfterMs, $e->getMessage(), $e->failure->isRetryable());
             if (PlatformFailure::ListingSold === $e->failure) {
                 // The marketplace already sold it; our webhook will (or did) mark it. Skip, do not retry.

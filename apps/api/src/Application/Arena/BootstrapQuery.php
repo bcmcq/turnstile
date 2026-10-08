@@ -7,6 +7,7 @@ namespace App\Application\Arena;
 use App\Application\Arena\Dto\ArenaBootstrap;
 use App\Application\Arena\Dto\PlatformView;
 use App\Application\Arena\Dto\SectionView;
+use App\Application\Run\RunRepository;
 use App\Domain\Platform\PlatformCode;
 use App\Domain\Venue\SectionStatus;
 use App\Domain\Venue\SectionTier;
@@ -14,7 +15,7 @@ use Doctrine\DBAL\Connection;
 
 final readonly class BootstrapQuery
 {
-    public function __construct(private Connection $db)
+    public function __construct(private Connection $db, private RunRepository $runs)
     {
     }
 
@@ -57,7 +58,7 @@ final readonly class BootstrapQuery
             platforms: $platforms,
             ticketCounts: array_map(intval(...), $byStatus),
             listedByPlatform: array_map(intval(...), $byPlatform),
-            currentRunId: null,   // phase 2
+            currentRunId: ($this->runs->active() ?? $this->runs->latest())?->id,
             autoscaleEnabled: false, // phase 5
         );
     }

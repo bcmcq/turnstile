@@ -26,7 +26,7 @@ final class DemoController
         $result = $seeder->seed();
         $platforms->syncToRedis();
         $r = $redis->get();
-        foreach (['run:*', 'worker:*:completions', 'webhook_conflicts', 'events'] as $pattern) {
+        foreach (['run:*', 'worker:*:completions', 'platform:*:stats', 'webhook_conflicts', 'events', 'autoscale:last_decision'] as $pattern) {
             foreach ($r->keys($pattern) as $key) {
                 $r->del(substr((string) $key, \strlen('turnstile:')));
             }

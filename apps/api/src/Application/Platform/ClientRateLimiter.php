@@ -14,6 +14,9 @@ use Symfony\Component\RateLimiter\RateLimiterFactoryInterface;
  */
 final class ClientRateLimiter
 {
+    /** Must match config/packages/rate_limiter.yaml. */
+    public const int CAPACITY = 200;
+    public const int TOKENS_PER_SECOND = 40;
     private const string BUCKET = 'shared';
 
     public function __construct(
