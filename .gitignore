@@ -1,0 +1,23 @@
+# OS / editor
+.DS_Store
+.idea/
+.vscode/
+
+# env
+.env.local
+.env.*.local
+
+# php
+apps/api/vendor/
+apps/api/var/
+apps/api/.env.local
+apps/api/.phpunit.cache/
+apps/mocks/vendor/
+apps/scaler/vendor/
+
+# node
+apps/web/node_modules/
+apps/web/dist/
+
+# docker
+docker/**/.cache/
