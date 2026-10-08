@@ -23,6 +23,7 @@ use App\Application\Run\RunFlags;
 use App\Application\Run\RunRepository;
 use App\Domain\Job\ActionState;
 use App\Domain\Job\JobOutcome;
+use Doctrine\DBAL\Connection;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 use Symfony\Component\Messenger\Exception\UnrecoverableMessageHandlingException;
@@ -31,7 +32,7 @@ use Symfony\Component\Messenger\Stamp\DelayStamp;
 use Symfony\Component\Messenger\Stamp\TransportNamesStamp;
 
 /**
- * The core of Turnstile. One ticket, one action, with every guarantee the README promises:
+ * The core of Turnstile. One ticket, one action, with the following guarantees:
  *  0. pause/cancel flags            → park or drop without counting an attempt
  *  1. heartbeat + attempt row       → the worker cards and the retry trace
  *  2. ledger claim                  → idempotency on our side (a replay stops here)
@@ -46,6 +47,7 @@ final class ProcessTicketJobHandler
     private const int PAUSE_PARK_MS = 2_000;
 
     public function __construct(
+        private readonly Connection $db,
         private readonly JobRepository $jobs,
         private readonly TicketRepository $tickets,
         private readonly RunRepository $runs,
@@ -149,22 +151,23 @@ final class ProcessTicketJobHandler
                 $this->platformStats->incr($platformCode, 'ok');
             }
 
-            // 5. Optimistic lock.
-            if (!$change->isNoop() && !$this->tickets->apply($ticket, $change, $run->id)) {
-                $this->counters->incr($run->id, 'conflicts');
-                throw new LockConflictException($ticket->id, $ticket->version);
-            }
-
-            // 6. Applied.
-            $step('ticket');
-            $this->ledger->apply($claim->id, $ticket, $change);
+            // 5 + 6. Optimistic lock, then ledger and job rows, in one transaction: a worker killed between the
+            // ticket write and the ledger apply would otherwise leave a pending claim and re-apply a house reprice.
+            $this->db->transactional(function () use ($ticket, $change, $run, $claim, $job, $attemptNo, $latencyMs, $started, $step): void {
+                if (!$change->isNoop() && !$this->tickets->apply($ticket, $change, $run->id)) {
+                    $this->counters->incr($run->id, 'conflicts');
+                    throw new LockConflictException($ticket->id, $ticket->version);
+                }
+                $step('ticket');
+                $this->ledger->apply($claim->id, $ticket, $change);
+                $this->jobs->closeAttempt($job->id, $attemptNo, JobOutcome::Success, 200, $latencyMs, null, null);
+                $this->jobs->markCompleted($job->id, (int) ((hrtime(true) - $started) / 1e6));
+            });
             $durationMs = (int) ((hrtime(true) - $started) / 1e6);
-            $this->jobs->closeAttempt($job->id, $attemptNo, JobOutcome::Success, 200, $latencyMs, null, null);
-            $this->jobs->markCompleted($job->id, $durationMs);
             $this->counters->incr($run->id, 'completed');
             $this->heartbeat->release('idle', $latencyMs);
             $this->heartbeat->completed();
-            $this->events->push('ticket.updated', ['ticketId' => $ticket->id, 'sectionId' => $ticket->sectionId, 'state' => ($change->status ?? $ticket->status)->code(), 'platformId' => null === $change->listing ? $ticket->platformId : $change->listing['platformId'], 'priceCents' => $change->priceCents ?? $ticket->priceCents, 'runId' => $run->id]);
+            $this->events->push('ticket.updated', ['ticketId' => $ticket->id, 'sectionId' => $ticket->sectionId, 'state' => ($change->status ?? $ticket->status)->code(), 'platformId' => null === $change->listing ? $ticket->platformId : $change->listing->platformId, 'priceCents' => $change->priceCents ?? $ticket->priceCents, 'runId' => $run->id]);
             $this->events->push('job.completed', ['jobId' => $job->id, 'runId' => $run->id, 'ticketId' => $ticket->id, 'attempt' => $attemptNo, 'worker' => $this->workerId, 'durationMs' => $durationMs, 'latencyMs' => $latencyMs]);
             $this->finalizer->check($run->id);
             $step('bookkeeping');
