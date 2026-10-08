@@ -61,5 +61,19 @@ services:
       timeout: 3s
       retries: 30
 
+  worker:
+    <<: *api-image
+    environment:
+      <<: *api-env
+      TURNSTILE_ROLE: worker
+    command: ["php", "bin/console", "messenger:consume", "async", "--time-limit=3600", "--memory-limit=256M", "-vv"]
+    healthcheck:
+      disable: true   # inherited FrankenPHP check probes Caddy, which workers do not run
+    stop_grace_period: 15s
+    scale: ${WORKER_SCALE}
+    depends_on:
+      api:
+        condition: service_healthy
+
 volumes:
   mysql-data:

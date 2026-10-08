@@ -5,6 +5,11 @@ services:
       - ./apps/api:/app
       - api-vendor:/app/vendor
       - api-var:/app/var
+  worker:
+    volumes:
+      - ./apps/api:/app
+      - api-vendor:/app/vendor
+      - api-var:/app/var
 
 volumes:
   api-vendor:
