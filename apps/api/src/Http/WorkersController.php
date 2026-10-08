@@ -14,6 +14,7 @@ use App\Application\Scaling\ScalerException;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpKernel\Attribute\MapRequestPayload;
 use Symfony\Component\HttpKernel\Exception\ServiceUnavailableHttpException;
+use Symfony\Component\HttpKernel\Exception\UnprocessableEntityHttpException;
 use Symfony\Component\Routing\Attribute\Route;
 
 #[Route('/api/workers')]
@@ -42,6 +43,9 @@ final class WorkersController
             $this->events->push('autoscale.toggled', ['enabled' => false]);
         }
         try {
+            if ($input->workers > $this->autoscale->maxWorkers) {
+                throw new UnprocessableEntityHttpException(\sprintf('workers: at most %d (MAX_WORKERS)', $this->autoscale->maxWorkers));
+            }
             $result = $this->scaler->scale($input->workers);
         } catch (ScalerException $e) {
             throw new ServiceUnavailableHttpException(null, $e->getMessage(), $e);

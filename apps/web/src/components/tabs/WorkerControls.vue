@@ -17,13 +17,13 @@ const min = computed(() => metrics.autoscale.min)
 const max = computed(() => metrics.autoscale.max)
 
 async function scale(delta: number): Promise<void> {
-  const target = Math.max(1, Math.min(24, shown.value + delta))
+  const target = Math.max(1, Math.min(max.value, shown.value + delta))
   if (target === shown.value) return
   busy.value = true
   pending.value = target
   try {
     const r = await api.scaleWorkers(target)
-    toasts.push('info', `${r.before} → ${r.target} workers · ${delta > 0 ? 'cloning containers' : 'stopping newest, in-flight jobs finish first'}`)
+    toasts.push('info', `${r.before} → ${r.target} workers · ${delta > 0 ? 'cloning containers' : 'stopping newest, in-flight jobs finish first'} · cards follow the heartbeats`)
     setTimeout(() => (pending.value = null), 12_000)
   } catch (e) {
     pending.value = null

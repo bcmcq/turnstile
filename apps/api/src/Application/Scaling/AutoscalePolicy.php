@@ -13,13 +13,13 @@ use Psr\Log\LoggerInterface;
  * Queue-depth autoscaler, ticked by the publisher every few seconds when enabled.
  *   depth / workers > SCALE_UP_PER_WORKER      → +SCALE_UP_STEP workers (max MAX)
  *   depth < SCALE_DOWN_DEPTH and per-worker < 25 → −SCALE_DOWN_STEP workers (min MIN)
+ * The ceiling comes from MAX_WORKERS (compose), which the scaler sidecar also enforces.
  * Scale-up waits COOLDOWN_SECONDS for the new workers to show up; scale-down runs every tick so an idle
  * fleet drains to MIN quickly. Production would hand this to KEDA / an HPA on the same signal.
  */
 final class AutoscalePolicy
 {
     public const int MIN = 2;
-    public const int MAX = 24;
     private const int SCALE_UP_PER_WORKER = 25;
     private const int SCALE_UP_STEP = 4;
     private const int SCALE_DOWN_DEPTH = 200;
@@ -34,6 +34,8 @@ final class AutoscalePolicy
         private readonly ScalerClientInterface $scaler,
         private readonly EventRecorder $events,
         private readonly LoggerInterface $logger,
+        /** MAX_WORKERS from compose: the scaler enforces the same number */
+        public readonly int $maxWorkers,
     ) {
     }
 
@@ -47,7 +49,7 @@ final class AutoscalePolicy
     {
         $decision = $this->redis->get()->get('autoscale:last_decision');
 
-        return new AutoscaleState($this->isEnabled(), self::MIN, self::MAX, \is_string($decision) ? $decision : null);
+        return new AutoscaleState($this->isEnabled(), self::MIN, $this->maxWorkers, \is_string($decision) ? $decision : null);
     }
 
     public function setEnabled(bool $enabled): void
@@ -85,11 +87,11 @@ final class AutoscalePolicy
 
         $target = null;
         $reason = '';
-        if ($perWorker > self::SCALE_UP_PER_WORKER && $workers < self::MAX) {
+        if ($perWorker > self::SCALE_UP_PER_WORKER && $workers < $this->maxWorkers) {
             if ($coolingDown) {
                 return null;
             }
-            $target = min(self::MAX, $workers + self::SCALE_UP_STEP);
+            $target = min($this->maxWorkers, $workers + self::SCALE_UP_STEP);
             $reason = \sprintf('%d queued ÷ %d workers = %d each > %d', $depth, $workers, $perWorker, self::SCALE_UP_PER_WORKER);
         } elseif ($depth < self::SCALE_DOWN_DEPTH && $perWorker < self::SCALE_DOWN_PER_WORKER && $workers > self::MIN) {
             $target = max(self::MIN, $workers - self::SCALE_DOWN_STEP);

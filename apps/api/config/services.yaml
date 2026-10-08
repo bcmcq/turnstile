@@ -12,6 +12,7 @@ services:
             string $redisUrl: '%env(REDIS_URL)%'
             string $scalerUrl: '%env(SCALER_URL)%'
             string $workerId: '%env(HOSTNAME)%'
+            int $maxWorkers: '%env(int:MAX_WORKERS)%'
 
     App\:
         resource: '../src/'

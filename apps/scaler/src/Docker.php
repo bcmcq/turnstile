@@ -26,7 +26,7 @@ final class Docker
             getenv('COMPOSE_PROJECT') ?: 'turnstile',
             getenv('WORKER_SERVICE') ?: 'worker',
             max(1, (int) (getenv('MIN_WORKERS') ?: 1)),
-            max(1, (int) (getenv('MAX_WORKERS') ?: 24)),
+            max(1, (int) (getenv('MAX_WORKERS') ?: 32)),
         );
     }
 
