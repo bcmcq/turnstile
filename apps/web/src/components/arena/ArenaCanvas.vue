@@ -7,8 +7,10 @@ import { useSeatAnimations } from '@/composables/useSeatAnimations'
 import { COLORS } from '@/lib/arenaPalette'
 import { SeatPalette } from '@/lib/arenaPalette'
 import { useArenaStore } from '@/stores/arena'
+import { useRunStore } from '@/stores/run'
 
 const arena = useArenaStore()
+const run = useRunStore()
 const canvas = ref<HTMLCanvasElement | null>(null)
 const container = ref<HTMLElement | null>(null)
 const palette = computed(() => new SeatPalette(arena.platforms))
@@ -25,6 +27,7 @@ const map = useArenaCanvas({
     fx.draw(ctx, view, map.seatPx())
     drawSelection(ctx, view)
   },
+  baseClip: (view) => fx.revealClip(view),
 })
 
 const pick = useArenaInteraction({
@@ -43,8 +46,8 @@ function drawSelection(ctx: CanvasRenderingContext2D, view: { scale: number; off
   const s = Math.max(2, map.seatPx())
   const half = s / 2
 
-  // selected sections: faint wash over their seats + highlighted label
-  if (arena.selectedSections.size) {
+  // selected sections: faint wash over their seats + highlighted label (wash only while idle: during a run the colors are the data)
+  if (arena.selectedSections.size && !run.isActive) {
     ctx.fillStyle = COLORS.cyan
     ctx.globalAlpha = 0.22
     for (let i = 0; i < seats.size; i++) {
@@ -125,9 +128,12 @@ const fx = useSeatAnimations({
   arenaHeight: arena.arenaSize.height,
 })
 
-watch(() => arena.seats, () => map.invalidate())
+watch(() => arena.seats, (seats) => {
+  map.invalidate()
+  if (seats) fx.revealSeats()
+})
 watch(() => arena.sections.map((s) => s.status).join(), () => map.requestFrame())
-watch([() => arena.selectedSections, () => arena.selectedTickets], () => map.requestFrame())
+watch([() => arena.selectedSections, () => arena.selectedTickets, () => run.isActive], () => map.requestFrame())
 
 const zoomLabel = computed(() => `${Math.round((map.view.scale / map.view.fitScale) * 100)}%`)
 

@@ -8,11 +8,14 @@ use App\Domain\Platform\PlatformCode;
 use App\Infrastructure\Redis\RedisFactory;
 use Doctrine\DBAL\Connection;
 
-/** Platforms change rarely; rows are cached for the life of the process. Chaos/buyer rates are mirrored to Redis for the mocks. */
+/** Platforms change rarely but the publisher is long-lived, so rows are cached for a few seconds. Chaos/buyer rates are mirrored to Redis for the mocks. */
 final class PlatformRepository
 {
+    private const float CACHE_SECONDS = 2.0;
+
     /** @var array<int, PlatformRow>|null */
     private ?array $rows = null;
+    private float $loadedAt = 0.0;
 
     public function __construct(private readonly Connection $db, private readonly RedisFactory $redis)
     {
@@ -69,7 +72,7 @@ final class PlatformRepository
     /** @return array<int, PlatformRow> */
     private function load(): array
     {
-        if (null !== $this->rows) {
+        if (null !== $this->rows && microtime(true) - $this->loadedAt < self::CACHE_SECONDS) {
             return $this->rows;
         }
         $rows = [];
@@ -77,6 +80,8 @@ final class PlatformRepository
         foreach ($this->db->iterateAssociative('SELECT id, code, fee_bps, min_price_cents, rate_limit_per_min, webhook_secret, failure_rate, buyer_rate FROM platforms ORDER BY id') as $r) {
             $rows[(int) $r['id']] = new PlatformRow((int) $r['id'], PlatformCode::from($r['code']), (int) $r['fee_bps'], (int) $r['min_price_cents'], (int) $r['rate_limit_per_min'], $r['webhook_secret'], (float) $r['failure_rate'], (float) $r['buyer_rate']);
         }
+
+        $this->loadedAt = microtime(true);
 
         return $this->rows = $rows;
     }

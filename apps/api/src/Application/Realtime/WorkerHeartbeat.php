@@ -58,8 +58,13 @@ final class WorkerHeartbeat
         $redis->expire($key, self::WINDOW_SECONDS * 2);
     }
 
-    private function touch(): void
+    /** Refresh the TTL; optionally set the state (idle) without clearing the current job fields. */
+    public function touch(?string $state = null): void
     {
-        $this->redis->get()->expire("worker:{$this->workerId}", self::TTL_SECONDS);
+        $redis = $this->redis->get();
+        if (null !== $state) {
+            $redis->hSet("worker:{$this->workerId}", 'state', $state);
+        }
+        $redis->expire("worker:{$this->workerId}", self::TTL_SECONDS);
     }
 }

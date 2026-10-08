@@ -30,9 +30,9 @@ final class WorkerLifecycleListener
     #[AsEventListener]
     public function onRunning(WorkerRunningEvent $event): void
     {
-        // Idle workers still need their TTL refreshed; cap at once per 3 s.
-        if ($event->isWorkerIdle() && microtime(true) - $this->lastTouch > 3.0) {
-            $this->heartbeat->release('idle', null);
+        // Keep the TTL alive on every loop (cancelled messages never claim the heartbeat); cap at once per 3 s.
+        if (microtime(true) - $this->lastTouch > 3.0) {
+            $this->heartbeat->touch($event->isWorkerIdle() ? 'idle' : null);
             $this->lastTouch = microtime(true);
         }
     }

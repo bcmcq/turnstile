@@ -23,6 +23,8 @@ export interface ArenaCanvasOptions {
   palette: () => SeatPalette
   /** draws on top of seats each frame, in CSS px with the view transform already applied by the caller */
   overlay?: (ctx: CanvasRenderingContext2D, view: ArenaView) => void
+  /** when set, the base layer is composited only inside this rounded rectangle (CSS px) */
+  baseClip?: (view: ArenaView) => { x: number; y: number; w: number; h: number; r: number } | null
 }
 
 const MAX_ZOOM = 6
@@ -185,7 +187,19 @@ export function useArenaCanvas(opts: ArenaCanvasOptions) {
     else repaintDirtySeats()
     ctx.setTransform(1, 0, 0, 1, 0, 0)
     ctx.clearRect(0, 0, c.width, c.height)
-    ctx.drawImage(base, 0, 0)
+    const clip = opts.baseClip?.(view) ?? null
+    if (clip) {
+      ctx.save()
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
+      ctx.beginPath()
+      ctx.roundRect(clip.x, clip.y, clip.w, clip.h, clip.r)
+      ctx.clip()
+      ctx.setTransform(1, 0, 0, 1, 0, 0)
+      ctx.drawImage(base, 0, 0)
+      ctx.restore()
+    } else {
+      ctx.drawImage(base, 0, 0)
+    }
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
     drawLabels(ctx)
     opts.overlay?.(ctx, view)

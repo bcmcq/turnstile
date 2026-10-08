@@ -1,11 +1,13 @@
 import { defineStore } from 'pinia'
-import { computed, shallowRef } from 'vue'
-import type { RunStatus, RunView } from '@/api/types'
+import { computed, ref, shallowRef } from 'vue'
+import { api } from '@/api/client'
+import type { RunStatus, RunView, StartRunRequest } from '@/api/types'
 
 const ACTIVE: RunStatus[] = ['pending', 'dispatching', 'running', 'paused']
 
 export const useRunStore = defineStore('run', () => {
   const current = shallowRef<RunView | null>(null)
+  const busy = ref(false)
 
   const isActive = computed(() => current.value !== null && ACTIVE.includes(current.value.status))
   const isPaused = computed(() => current.value?.status === 'paused')
@@ -24,5 +26,28 @@ export const useRunStore = defineStore('run', () => {
     current.value = run
   }
 
-  return { current, isActive, isPaused, terminal, progress, remaining, set }
+  async function call(fn: () => Promise<RunView>): Promise<RunView> {
+    busy.value = true
+    try {
+      const run = await fn()
+      current.value = run
+      return run
+    } finally {
+      busy.value = false
+    }
+  }
+
+  const start = (req: StartRunRequest) => call(() => api.startRun(req))
+  const pause = () => call(() => api.pauseRun(requireId()))
+  const resume = () => call(() => api.resumeRun(requireId()))
+  const cancel = () => call(() => api.cancelRun(requireId()))
+  const replay = (limit = 500) => call(() => api.startRun({ type: 'replay', replayLimit: limit }))
+
+  function requireId(): string {
+    const id = current.value?.id
+    if (!id) throw new Error('no run')
+    return id
+  }
+
+  return { current, busy, isActive, isPaused, terminal, progress, remaining, set, start, pause, resume, cancel, replay }
 })

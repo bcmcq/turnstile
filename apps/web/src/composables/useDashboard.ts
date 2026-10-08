@@ -35,9 +35,7 @@ export function useDashboard() {
         liveBus.emit('reset', undefined)
         onReset.value?.()
       } else {
-        const wasStarted = run.current?.id === u.id && run.current.status !== 'pending' && run.current.status !== 'dispatching'
         run.set(u)
-        if (u.status === 'running' && !wasStarted) liveBus.emit('runStarted', u)
       }
     },
   })

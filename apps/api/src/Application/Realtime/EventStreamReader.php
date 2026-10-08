@@ -23,6 +23,14 @@ final class EventStreamReader
         $this->setup($redis);
         /** @var array<string, array<string, array<string, string>>>|false $result */
         $result = $redis->xReadGroup(self::GROUP, $this->workerId, [EventRecorder::STREAM => '>'], $count, $blockMs);
+        if (false === $result && str_contains((string) $redis->getLastError(), 'NOGROUP')) {
+            // Stream or group vanished (flush, reset): recreate and carry on.
+            $redis->clearLastError();
+            $this->ready = false;
+            $this->setup($redis);
+
+            return [];
+        }
         if (!\is_array($result) || [] === $result) {
             return [];
         }

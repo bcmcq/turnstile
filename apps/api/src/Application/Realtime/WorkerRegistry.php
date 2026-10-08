@@ -25,7 +25,7 @@ final class WorkerRegistry
             /** @var array<int, string>|false $batch */
             $batch = $redis->scan($it, $prefix . 'worker:*', 200);
             foreach (\is_array($batch) ? $batch : [] as $k) {
-                if (!str_ends_with($k, ':completions') && !str_ends_with($k, ':names')) {
+                if (!str_ends_with($k, ':completions') && !str_contains($k, ':names')) {
                     $keys[] = substr($k, \strlen($prefix));
                 }
             }

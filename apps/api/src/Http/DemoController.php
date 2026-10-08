@@ -26,7 +26,8 @@ final class DemoController
         $result = $seeder->seed();
         $platforms->syncToRedis();
         $r = $redis->get();
-        foreach (['run:*', 'worker:*:completions', 'platform:*:stats', 'webhook_conflicts', 'events', 'autoscale:last_decision'] as $pattern) {
+        // Not the events stream: deleting it would drop the publisher's consumer group.
+        foreach (['run:*', 'worker:*:completions', 'platform:*:stats', 'webhook_conflicts', 'autoscale:last_decision'] as $pattern) {
             foreach ($r->keys($pattern) as $key) {
                 $r->del(substr((string) $key, \strlen('turnstile:')));
             }

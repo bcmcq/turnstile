@@ -1,8 +1,8 @@
 import { gsap } from 'gsap'
 import { onBeforeUnmount, onMounted } from 'vue'
-import type { LogEvent, RunView, SeatUpdate, TicketStateCode } from '@/api/types'
+import type { LogEvent, SeatUpdate, TicketStateCode } from '@/api/types'
 import type { ArenaView } from '@/composables/useArenaCanvas'
-import { COLORS, SeatPalette } from '@/lib/arenaPalette'
+import { COLORS, FLOOR, SeatPalette } from '@/lib/arenaPalette'
 import { liveBus } from '@/lib/liveBus'
 import type { SeatTable } from '@/lib/seatTable'
 
@@ -17,15 +17,6 @@ interface Pulse {
   kind: 'pop' | 'flicker'
 }
 
-interface Ripple {
-  start: number
-  duration: number
-  cx: number
-  cy: number
-  maxDist: number
-  seats: Int32Array
-}
-
 export interface SeatAnimationOptions {
   seats: () => SeatTable | null
   palette: () => SeatPalette
@@ -37,8 +28,8 @@ export interface SeatAnimationOptions {
 
 const POP_MS = 320
 const FLICKER_MS = 400
-const RIPPLE_MS = 700
-const RIPPLE_SEAT_CAP = 25_000
+const REVEAL_MS = 1_600
+const REVEAL_POP_MS = 420
 const ease = gsap.parseEase('power2.out')
 
 /**
@@ -49,7 +40,11 @@ export function useSeatAnimations(opts: SeatAnimationOptions) {
   let overlay = new Uint8Array(0)
   const overlaid = new Set<number>()
   const pulses = new Map<number, Pulse>()
-  let ripple: Ripple | null = null
+  let reveal: { start: number; duration: number } | null = null
+  let revealOrder: Int32Array | null = null // seat indices sorted by distance from the floor
+  let revealDist: Float32Array | null = null // distance per seat, same indexing as the table
+  let revealMax = 1
+  let revealShift = 0 // distance from the innermost floor seat to the floor edge
   let ticking = false
   const unsubscribe: Array<() => void> = []
 
@@ -83,9 +78,9 @@ export function useSeatAnimations(opts: SeatAnimationOptions) {
   function tick(): void {
     const now = performance.now()
     for (const [i, p] of pulses) if (now - p.start > p.duration) pulses.delete(i)
-    if (ripple && now - ripple.start > ripple.duration) ripple = null
+    if (reveal && now - reveal.start > reveal.duration) reveal = null
     opts.requestFrame()
-    if (pulses.size === 0 && !ripple) {
+    if (pulses.size === 0 && !reveal) {
       gsap.ticker.remove(tick)
       ticking = false
     }
@@ -155,30 +150,78 @@ export function useSeatAnimations(opts: SeatAnimationOptions) {
     }
   }
 
-  /** Fan-out: flash the run's selection outward from the floor over RIPPLE_MS. */
-  function onRunStarted(run: RunView): void {
-    const seats = ensureArrays()
-    if (!seats || run.totalJobs === 0) return
-    const sections = new Set(run.selection.sections)
-    const tickets = new Set(run.selection.tickets)
-    const picked: number[] = []
-    for (let i = 0; i < seats.size && picked.length < RIPPLE_SEAT_CAP; i++) {
-      if (sections.has(seats.sectionId[i]) || tickets.has(seats.ticketId[i])) picked.push(i)
-    }
-    const cx = opts.arenaWidth / 2
-    const cy = opts.arenaHeight / 2
-    let maxDist = 1
-    for (const i of picked) maxDist = Math.max(maxDist, Math.hypot(seats.x[i] - cx, seats.y[i] - cy))
-    ripple = { start: performance.now(), duration: RIPPLE_MS, cx, cy, maxDist, seats: Int32Array.from(picked) }
-    startTicker()
-  }
-
   function reset(): void {
     overlay = new Uint8Array(0)
     overlaid.clear()
     pulses.clear()
-    ripple = null
     opts.requestFrame()
+  }
+
+  /** Called when a seat table arrives (first load, demo reset): the bowl populates outward from the floor. */
+  function revealSeats(): void {
+    const seats = ensureArrays()
+    if (!seats) return
+    revealDist = new Float32Array(seats.size)
+    revealMax = 1
+    let min = 0
+    for (let i = 0; i < seats.size; i++) {
+      const d = floorDistance(seats.x[i], seats.y[i])
+      revealDist[i] = d
+      if (d > revealMax) revealMax = d
+      if (d < min) min = d
+    }
+    // shift so the innermost floor seat is at 0 and the wave starts there
+    for (let i = 0; i < seats.size; i++) revealDist[i] -= min
+    revealMax -= min
+    revealShift = -min
+    const dist = revealDist
+    revealOrder = Int32Array.from({ length: seats.size }, (_, i) => i).sort((a, b) => dist[a] - dist[b])
+    reveal = { start: performance.now(), duration: REVEAL_MS }
+    startTicker()
+  }
+
+  /** Signed distance (arena units) from the floor's rounded rectangle; rings are offsets of it, so this is the ring offset. */
+  function floorDistance(x: number, y: number): number {
+    const px = Math.abs(x - opts.arenaWidth / 2) - (FLOOR.width / 2 - FLOOR.radius)
+    const py = Math.abs(y - opts.arenaHeight / 2) - (FLOOR.height / 2 - FLOOR.radius)
+    const qx = Math.max(px, 0)
+    const qy = Math.max(py, 0)
+    return Math.hypot(qx, qy) + Math.min(Math.max(px, py), 0) - FLOOR.radius
+  }
+
+  /** While revealing, the base layer is only shown inside this rounded rectangle (the floor grown by the wave's reach); the wavefront seats are drawn on top. */
+  function revealClip(view: ArenaView): { x: number; y: number; w: number; h: number; r: number } | null {
+    if (!reveal || !revealDist) return null
+    const t = Math.min(1, (performance.now() - reveal.start) / reveal.duration)
+    const grow = Math.max(0, ease(t) * revealMax - bandUnits() - revealShift)
+    const w = FLOOR.width + 2 * grow
+    const h = FLOOR.height + 2 * grow
+    return {
+      x: (opts.arenaWidth / 2 - w / 2) * view.scale + view.offsetX,
+      y: (opts.arenaHeight / 2 - h / 2) * view.scale + view.offsetY,
+      w: w * view.scale,
+      h: h * view.scale,
+      r: (FLOOR.radius + grow) * view.scale,
+    }
+  }
+
+  function bandUnits(): number {
+    return revealMax * (REVEAL_POP_MS / REVEAL_MS)
+  }
+
+  /** First index in revealOrder whose distance is >= d. */
+  function lowerBound(d: number): number {
+    const order = revealOrder
+    const dist = revealDist
+    if (!order || !dist) return 0
+    let lo = 0
+    let hi = order.length
+    while (lo < hi) {
+      const mid = (lo + hi) >> 1
+      if (dist[order[mid]] < d) lo = mid + 1
+      else hi = mid
+    }
+    return lo
   }
 
   // --- drawing --------------------------------------------------------------------------------------
@@ -190,29 +233,6 @@ export function useSeatAnimations(opts: SeatAnimationOptions) {
     const half = s / 2
     const sx = (i: number) => seats.x[i] * view.scale + view.offsetX
     const sy = (i: number) => seats.y[i] * view.scale + view.offsetY
-
-    if (ripple) {
-      const t = Math.min(1, (now - ripple.start) / ripple.duration)
-      const reach = ease(t) * ripple.maxDist * view.scale
-      const alpha = 0.55 * (1 - t)
-      ctx.fillStyle = COLORS.cyan
-      ctx.globalAlpha = alpha
-      const ocx = ripple.cx * view.scale + view.offsetX
-      const ocy = ripple.cy * view.scale + view.offsetY
-      for (const i of ripple.seats) {
-        const x = sx(i)
-        const y = sy(i)
-        if (Math.hypot(x - ocx, y - ocy) <= reach) ctx.fillRect(x - half, y - half, s, s)
-      }
-      ctx.globalAlpha = 1
-      ctx.strokeStyle = COLORS.cyan
-      ctx.lineWidth = 1.5
-      ctx.globalAlpha = 0.5 * (1 - t)
-      ctx.beginPath()
-      ctx.arc(ocx, ocy, reach, 0, Math.PI * 2)
-      ctx.stroke()
-      ctx.globalAlpha = 1
-    }
 
     for (const i of overlaid) {
       const x = sx(i)
@@ -241,6 +261,25 @@ export function useSeatAnimations(opts: SeatAnimationOptions) {
       }
     }
 
+    if (reveal && revealOrder && revealDist) {
+      // Seats whose distance is within one pop-duration of the wavefront: scale 2.4× → 1×, fade in, final color.
+      const t = Math.min(1, (now - reveal.start) / reveal.duration)
+      const reach = ease(t) * revealMax
+      const band = bandUnits()
+      const from = lowerBound(reach - band)
+      const to = lowerBound(reach)
+      const palette = opts.palette()
+      for (let k = from; k < to; k++) {
+        const i = revealOrder[k]
+        const p = Math.min(1, (reach - revealDist[i]) / band) // 0 = just arrived, 1 = settled
+        const grow = 1 + 1.4 * (1 - p) * (1 - p)
+        ctx.globalAlpha = 0.25 + 0.75 * p
+        ctx.fillStyle = palette.colors[palette.slot(seats.state[i], seats.platformId[i])]
+        ctx.fillRect(sx(i) - half * grow, sy(i) - half * grow, s * grow, s * grow)
+      }
+      ctx.globalAlpha = 1
+    }
+
     for (const [i, p] of pulses) {
       const t = Math.min(1, (now - p.start) / p.duration)
       const x = sx(i)
@@ -260,7 +299,7 @@ export function useSeatAnimations(opts: SeatAnimationOptions) {
   }
 
   onMounted(() => {
-    unsubscribe.push(liveBus.on('seats', onSeats), liveBus.on('log', onLog), liveBus.on('runStarted', onRunStarted), liveBus.on('reset', reset))
+    unsubscribe.push(liveBus.on('seats', onSeats), liveBus.on('log', onLog), liveBus.on('reset', reset))
   })
   onBeforeUnmount(() => {
     unsubscribe.forEach((u) => u())
@@ -282,5 +321,5 @@ export function useSeatAnimations(opts: SeatAnimationOptions) {
     }
   }
 
-  return { draw, overlayOf, overlayCount: () => overlaid.size }
+  return { draw, overlayOf, revealSeats, revealClip, overlayCount: () => overlaid.size }
 }
