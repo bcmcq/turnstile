@@ -32,6 +32,12 @@ final class DemoController
                 $r->del(substr((string) $key, \strlen('turnstile:')));
             }
         }
+        // Queued messages from before the reset would collide with the re-numbered jobs. Trim the streams
+        // (keeps the consumer groups the workers hold) and drop the delayed-retry sets.
+        foreach (['turnstile_control', 'turnstile_platform_tixhub', 'turnstile_platform_seatswap', 'turnstile_platform_passmarket', 'turnstile_platform_house'] as $stream) {
+            $r->rawCommand('XTRIM', $stream, 'MAXLEN', '0');
+            $r->rawCommand('DEL', $stream . '__queue');
+        }
         $events->push('demo.reset', ['seats' => $result['seats']]);
 
         return new JsonResponse($result);

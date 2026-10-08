@@ -85,8 +85,11 @@ final class ProcessTicketJobHandler
         $job = $this->jobs->find($message->jobId);
         $run = $this->runs->find($message->runId);
         $ticket = $this->tickets->find($message->ticketId);
-        if (null === $job || null === $run || null === $ticket) {
-            throw new UnrecoverableMessageHandlingException(\sprintf('job %d / run %s / ticket %d not found', $message->jobId, $message->runId, $message->ticketId));
+        if (null === $job || null === $run || null === $ticket || $job->runId !== $message->runId || $job->ticketId !== $message->ticketId) {
+            // A message that outlived its run (demo reset, truncated tables): drop it, never touch whatever row now has this id.
+            $this->logger->warning('dropping stale message for job {job} of run {run}', ['job' => $message->jobId, 'run' => $message->runId]);
+
+            return;
         }
         if ($job->status->isTerminal()) {
             return; // redelivered after completion; nothing to do

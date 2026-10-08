@@ -1,4 +1,4 @@
-import type { RunStatus, RunType } from '@/api/types'
+import type { JobOutcome, JobRow, RunStatus, RunType } from '@/api/types'
 
 export const fmtInt = (n: number): string => new Intl.NumberFormat('en-US').format(Math.round(n))
 
@@ -35,3 +35,22 @@ export const runStatusLabel: Record<RunStatus, string> = {
   completed_with_failures: 'Completed with failures',
   cancelled: 'Cancelled',
 }
+
+export const outcomeLabel: Record<JobOutcome, string> = {
+  success: 'ok',
+  http_429: '429',
+  http_5xx: '500',
+  timeout: 'timeout',
+  lock_conflict: 'conflict',
+  idempotent_skip: 'duplicate',
+  sold_during_run: 'sold',
+  unexpected: 'error',
+}
+
+/** "429 ×5", "timeout ×5", "conflict ×2" */
+export function jobReason(job: Pick<JobRow, 'lastOutcome' | 'attempts'>): string {
+  const label = job.lastOutcome ? outcomeLabel[job.lastOutcome] : 'failed'
+  return job.attempts > 1 ? `${label} ×${job.attempts}` : label
+}
+
+export const fmtMs = (ms: number | null | undefined): string => (ms === null || ms === undefined ? '—' : ms >= 1000 ? `${(ms / 1000).toFixed(1)} s` : `${fmtInt(ms)} ms`)
