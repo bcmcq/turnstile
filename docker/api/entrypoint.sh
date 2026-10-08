@@ -8,6 +8,7 @@ if [ "$TURNSTILE_ROLE" = "api" ]; then
   done
   php bin/console doctrine:migrations:migrate --no-interaction --allow-no-migration
   php bin/console turnstile:seed --if-empty || true
+  php bin/console turnstile:platforms:sync || true
 fi
 
 exec "$@"

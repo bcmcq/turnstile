@@ -9,7 +9,7 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Event\RequestEvent;
 use Symfony\Component\HttpKernel\Event\ResponseEvent;
 
-// ponytail: 20 lines instead of nelmio/cors-bundle. Single allowed origin, the Vite dev server.
+// 20 lines instead of nelmio/cors-bundle. Single allowed origin, the Vite dev server.
 final class CorsSubscriber
 {
     private const string ALLOWED_ORIGIN = 'http://localhost:5173';

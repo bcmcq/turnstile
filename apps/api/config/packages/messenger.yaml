@@ -3,22 +3,41 @@ framework:
         failure_transport: failed
 
         transports:
-            # Phase 0: one transport. Phase 2 splits into platform_tixhub / platform_seatswap / platform_passmarket / platform_house.
-            async:
-                dsn: '%env(MESSENGER_TRANSPORT_DSN)%'
-                options:
-                    stream: turnstile_async
-                    group: workers
-                    consumer: '%env(HOSTNAME)%'
-                    auto_setup: true
-                    delete_after_ack: true
+            control:
+                dsn: '%env(REDIS_URL)%'
+                options: { stream: turnstile_control, group: workers, consumer: '%env(HOSTNAME)%', auto_setup: true, delete_after_ack: true }
+                retry_strategy: { max_retries: 3, delay: 1000, multiplier: 2 }
+            # One stream per platform so a saturated marketplace never blocks the others. "house" carries
+            # jobs that do not call a platform (open_section, reprice of unlisted tickets, replays).
+            platform_tixhub:
+                dsn: '%env(REDIS_URL)%'
+                options: { stream: turnstile_platform_tixhub, group: workers, consumer: '%env(HOSTNAME)%', auto_setup: true, delete_after_ack: true, redeliver_timeout: 60 }
+                retry_strategy: { service: App\Infrastructure\Messenger\JitteredRetryStrategy }
+            platform_seatswap:
+                dsn: '%env(REDIS_URL)%'
+                options: { stream: turnstile_platform_seatswap, group: workers, consumer: '%env(HOSTNAME)%', auto_setup: true, delete_after_ack: true, redeliver_timeout: 60 }
+                retry_strategy: { service: App\Infrastructure\Messenger\JitteredRetryStrategy }
+            platform_passmarket:
+                dsn: '%env(REDIS_URL)%'
+                options: { stream: turnstile_platform_passmarket, group: workers, consumer: '%env(HOSTNAME)%', auto_setup: true, delete_after_ack: true, redeliver_timeout: 60 }
+                retry_strategy: { service: App\Infrastructure\Messenger\JitteredRetryStrategy }
+            platform_house:
+                dsn: '%env(REDIS_URL)%'
+                options: { stream: turnstile_platform_house, group: workers, consumer: '%env(HOSTNAME)%', auto_setup: true, delete_after_ack: true, redeliver_timeout: 60 }
+                retry_strategy: { service: App\Infrastructure\Messenger\JitteredRetryStrategy }
             failed: 'doctrine://default?queue_name=failed'
 
-        routing: []
+        routing:
+            App\Application\Run\Message\RunStarted: control
+            App\Application\Job\Message\ProcessTicketJob: platform_house   # overridden per message with TransportNamesStamp
 
 when@test:
     framework:
         messenger:
             transports:
-                async: 'in-memory://'
+                control: 'in-memory://'
+                platform_tixhub: 'in-memory://'
+                platform_seatswap: 'in-memory://'
+                platform_passmarket: 'in-memory://'
+                platform_house: 'in-memory://'
                 failed: 'in-memory://'

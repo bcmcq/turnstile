@@ -9,6 +9,8 @@ services:
         autoconfigure: true
         bind:
             string $mocksBaseUrl: '%env(MOCKS_BASE_URL)%'
+            string $redisUrl: '%env(REDIS_URL)%'
+            string $workerId: '%env(HOSTNAME)%'
 
     App\:
         resource: '../src/'

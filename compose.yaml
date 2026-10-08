@@ -10,7 +10,7 @@ x-api-image: &api-image
     APP_SECRET: turnstile-dev-secret
     DATABASE_URL: mysql://${MYSQL_USER}:${MYSQL_PASSWORD}@mysql:3306/${MYSQL_DATABASE}?serverVersion=8.4&charset=utf8mb4
     REDIS_URL: redis://redis:6379
-    MESSENGER_TRANSPORT_DSN: redis://redis:6379/messages
+    LOCK_DSN: redis://redis:6379
     MERCURE_URL: http://api:8080/.well-known/mercure
     MERCURE_PUBLIC_URL: http://localhost:8080/.well-known/mercure
     MERCURE_JWT_SECRET: ${MERCURE_PUBLISHER_JWT_KEY}
@@ -68,7 +68,8 @@ services:
     environment:
       <<: *api-env
       TURNSTILE_ROLE: worker
-    command: ["php", "bin/console", "messenger:consume", "async", "--time-limit=3600", "--memory-limit=256M", "-vv"]
+    command: ["php", "bin/console", "messenger:consume", "control", "platform_tixhub", "platform_seatswap", "platform_passmarket", "platform_house", "--time-limit=3600", "--memory-limit=256M", "-vv"]
+    restart: unless-stopped
     healthcheck:
       disable: true   # inherited FrankenPHP check probes Caddy, which workers do not run
     stop_grace_period: 15s
@@ -83,6 +84,7 @@ services:
       <<: *api-env
       TURNSTILE_ROLE: publisher
     command: ["php", "bin/console", "turnstile:publish", "-vv"]
+    restart: unless-stopped
     healthcheck:
       disable: true
     depends_on:

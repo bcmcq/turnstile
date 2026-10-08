@@ -138,9 +138,9 @@ final class ArenaSeeder
         $secret = static fn (PlatformCode $c): string => hash('sha256', 'turnstile-webhook-' . $c->value);
 
         return [
-            new Platform(PlatformCode::TixHub, $this->mocksBaseUrl . '/tixhub', rateLimitPerMin: 100, feeBps: 1_000, minPriceCents: 500, webhookSecret: $secret(PlatformCode::TixHub)),
-            new Platform(PlatformCode::SeatSwap, $this->mocksBaseUrl . '/seatswap', rateLimitPerMin: 100, feeBps: 1_250, minPriceCents: 500, webhookSecret: $secret(PlatformCode::SeatSwap)),
-            new Platform(PlatformCode::PassMarket, $this->mocksBaseUrl . '/passmarket', rateLimitPerMin: 100, feeBps: 800, minPriceCents: 500, webhookSecret: $secret(PlatformCode::PassMarket)),
+            new Platform(PlatformCode::TixHub, $this->mocksBaseUrl . '/tixhub', rateLimitPerMin: 3_000, feeBps: 1_000, minPriceCents: 500, webhookSecret: $secret(PlatformCode::TixHub)),
+            new Platform(PlatformCode::SeatSwap, $this->mocksBaseUrl . '/seatswap', rateLimitPerMin: 3_000, feeBps: 1_250, minPriceCents: 500, webhookSecret: $secret(PlatformCode::SeatSwap)),
+            new Platform(PlatformCode::PassMarket, $this->mocksBaseUrl . '/passmarket', rateLimitPerMin: 3_000, feeBps: 800, minPriceCents: 500, webhookSecret: $secret(PlatformCode::PassMarket)),
         ];
     }
 }

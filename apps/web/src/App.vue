@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
 
-// ponytail: phase 0 smoke screen. Confirms Vite, Tailwind, API and Mercure are reachable.
+// Phase 0 smoke screen. Confirms Vite, Tailwind, API and Mercure are reachable.
 const api = ref<string>('…')
 const mercure = ref<string>('…')
 

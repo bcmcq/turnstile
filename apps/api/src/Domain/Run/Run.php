@@ -30,7 +30,7 @@ class Run
     #[ORM\Column(type: Types::INTEGER, options: ['unsigned' => true])]
     public private(set) int $number;
 
-    #[ORM\Column(length: 16, enumType: RunStatus::class)]
+    #[ORM\Column(length: 24, enumType: RunStatus::class)]
     public private(set) RunStatus $status = RunStatus::Pending;
 
     #[ORM\ManyToOne(targetEntity: self::class), ORM\JoinColumn(nullable: true)]
@@ -86,5 +86,10 @@ class Run
         $this->id = Uuid::v7();
         $this->number = $number;
         $this->createdAt = $this->updatedAt = new \DateTimeImmutable();
+    }
+
+    public function setReplayOf(self $origin): void
+    {
+        $this->replayOf = $origin;
     }
 }
