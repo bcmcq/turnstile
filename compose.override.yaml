@@ -15,6 +15,9 @@ services:
       - ./apps/api:/app
       - api-vendor:/app/vendor
       - api-var:/app/var
+  mocks:
+    volumes:
+      - ./apps/mocks:/app
 
 volumes:
   api-vendor:

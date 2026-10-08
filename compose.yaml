@@ -16,6 +16,7 @@ x-api-image: &api-image
     MERCURE_JWT_SECRET: ${MERCURE_PUBLISHER_JWT_KEY}
     MERCURE_PUBLISHER_JWT_KEY: ${MERCURE_PUBLISHER_JWT_KEY}
     MERCURE_SUBSCRIBER_JWT_KEY: ${MERCURE_SUBSCRIBER_JWT_KEY}
+    MOCKS_BASE_URL: http://mocks:8090
   depends_on:
     mysql:
       condition: service_healthy
@@ -85,6 +86,25 @@ services:
       disable: true
     depends_on:
       api:
+        condition: service_healthy
+
+  mocks:
+    build:
+      context: .
+      dockerfile: docker/mocks/Dockerfile
+    image: turnstile/mocks
+    environment:
+      REDIS_URL: redis://redis:6379
+      API_WEBHOOK_URL: http://api:8080/api/webhooks
+    ports:
+      - "8090:8090"
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8090/"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    depends_on:
+      redis:
         condition: service_healthy
 
 volumes:
