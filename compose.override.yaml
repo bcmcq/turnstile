@@ -1,4 +1,5 @@
 # Local development: bind-mount the Symfony app so edits apply without a rebuild.
+# Scaler-created workers copy the template worker's mounts, so they see the same code.
 services:
   api:
     volumes:
@@ -18,6 +19,9 @@ services:
   mocks:
     volumes:
       - ./apps/mocks:/app
+  scaler:
+    volumes:
+      - ./apps/scaler:/app
 
 volumes:
   api-vendor:

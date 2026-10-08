@@ -17,6 +17,7 @@ x-api-image: &api-image
     MERCURE_PUBLISHER_JWT_KEY: ${MERCURE_PUBLISHER_JWT_KEY}
     MERCURE_SUBSCRIBER_JWT_KEY: ${MERCURE_SUBSCRIBER_JWT_KEY}
     MOCKS_BASE_URL: http://mocks:8090
+    SCALER_URL: http://scaler:8070
   depends_on:
     mysql:
       condition: service_healthy
@@ -106,6 +107,25 @@ services:
     depends_on:
       redis:
         condition: service_healthy
+
+  scaler:
+    build:
+      context: .
+      dockerfile: docker/scaler/Dockerfile
+    image: turnstile/scaler
+    environment:
+      COMPOSE_PROJECT: turnstile
+      WORKER_SERVICE: worker
+      MIN_WORKERS: 1
+      MAX_WORKERS: 24
+    volumes:
+      # Demo only: the socket gives this container root on the host. See README → Scaling.
+      - /var/run/docker.sock:/var/run/docker.sock
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8070/"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
 
 volumes:
   mysql-data:
