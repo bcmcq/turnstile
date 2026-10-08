@@ -32,7 +32,7 @@ try {
             $respond(422, ['error' => 'body must be {"workers": n}']);
         }
         // Accept and return at once; bin/scale.php does the docker work in the background (logs go to the container's stderr).
-        $target = max(1, min((int) (getenv('MAX_WORKERS') ?: 32), $target));
+        $target = max(1, min($docker->max, $target));
         $running = \count(array_filter($docker->workers(), static fn (array $w): bool => 'running' === $w['state']));
         $cmd = sprintf('php %s %d >> /proc/1/fd/2 2>&1 &', escapeshellarg(__DIR__.'/../bin/scale.php'), $target);
         exec($cmd);

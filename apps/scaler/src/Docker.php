@@ -17,7 +17,7 @@ final class Docker
         private readonly string $project,
         private readonly string $service,
         private readonly int $min,
-        private readonly int $max,
+        public readonly int $max,
     ) {}
 
     public static function fromEnv(): self
@@ -26,7 +26,7 @@ final class Docker
             getenv('COMPOSE_PROJECT') ?: 'turnstile',
             getenv('WORKER_SERVICE') ?: 'worker',
             max(1, (int) (getenv('MIN_WORKERS') ?: 1)),
-            max(1, (int) (getenv('MAX_WORKERS') ?: 32)),
+            (int) getenv('MAX_WORKERS') ?: throw new \RuntimeException('MAX_WORKERS is not set; compose.yaml provides it'),
         );
     }
 
