@@ -22,7 +22,7 @@ final class JobController
     {
         $job = $this->jobs->find($id) ?? throw new NotFoundHttpException('job not found');
 
-        return new JsonResponse(['job' => $job, 'attempts' => $this->jobs->attempts($job->id)]);
+        return new JsonResponse(['job' => $job, 'attempts' => $this->jobs->attempts($job->id), 'idempotencyKey' => $this->jobs->idempotencyKey($job->id)]);
     }
 
     /** Same trace, addressed by ticket: the latest job that touched the seat. */
@@ -31,7 +31,7 @@ final class JobController
     {
         $job = $this->jobs->latestForTicket($ticketId) ?? throw new NotFoundHttpException('no job has touched this ticket yet');
 
-        return new JsonResponse(['job' => $job, 'attempts' => $this->jobs->attempts($job->id)]);
+        return new JsonResponse(['job' => $job, 'attempts' => $this->jobs->attempts($job->id), 'idempotencyKey' => $this->jobs->idempotencyKey($job->id)]);
     }
 
     #[Route('/api/jobs/{id}/retry', name: 'api_jobs_retry', methods: ['POST'], requirements: ['id' => '\d+'])]

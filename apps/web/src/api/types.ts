@@ -214,6 +214,8 @@ export interface JobAttempt {
 export interface JobDetail {
   job: JobRow
   attempts: JobAttempt[]
+  /** null until a worker has run it */
+  idempotencyKey: string | null
 }
 
 export interface RepriceInput {

@@ -38,6 +38,12 @@ final readonly class TicketChange
         return new self(null, null, null, $barcode);
     }
 
+    /** A buyer bought it on this platform, which may differ from the row's when the sale lands mid-transfer. */
+    public static function sold(int $platformId, string $externalRef): self
+    {
+        return new self(TicketStatus::Sold, new Listing($platformId, $externalRef), null, null);
+    }
+
     public static function status(TicketStatus $status): self
     {
         return new self($status, null, null, null);

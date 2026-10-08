@@ -9,6 +9,7 @@ use App\Application\Job\TicketRepository;
 use App\Application\Platform\PlatformRepository;
 use App\Application\Platform\PlatformRow;
 use App\Application\Realtime\EventRecorder;
+use App\Domain\Job\JobStatus;
 use App\Domain\Job\WebhookOutcome;
 use App\Domain\Platform\PlatformCode;
 use App\Domain\Ticket\TicketStatus;
@@ -47,6 +48,7 @@ final readonly class ListingSoldHandler
         $deliveryId = \is_string($payload['delivery_id'] ?? null) ? $payload['delivery_id'] : '';
         $ticketId = is_numeric($payload['ticket_id'] ?? null) ? (int) $payload['ticket_id'] : 0;
         $soldPrice = is_numeric($payload['sold_price_cents'] ?? null) ? (int) $payload['sold_price_cents'] : null;
+        $externalRef = \is_string($payload['external_ref'] ?? null) && '' !== $payload['external_ref'] ? $payload['external_ref'] : null;
         $event = \is_string($payload['event'] ?? null) ? $payload['event'] : 'unknown';
 
         if ('listing.sold' !== $event || '' === $deliveryId || 0 === $ticketId) {
@@ -66,13 +68,18 @@ final readonly class ListingSoldHandler
                 $outcome = WebhookOutcome::IgnoredAlreadySold;
                 break;
             }
-            // A platform may only sell what it is currently listing; anything else is a forged or stale delivery.
-            if (TicketStatus::Listed !== $ticket->status || $ticket->platformId !== $platform->id) {
+            // Only a listed ticket can be bought: on this platform, or mid-transfer from another one (the mock fires
+            // this webhook before answering the create call, so our row has not caught up yet). House inventory is
+            // never for sale, so a first listing cannot be sniped.
+            $listedHere = $ticket->platformId === $platform->id;
+            if (TicketStatus::Listed !== $ticket->status || (!$listedHere && !$this->isListingInFlight($ticketId, $platform->id))) {
                 $outcome = WebhookOutcome::Invalid;
                 break;
             }
-            if ($this->tickets->apply($ticket, TicketChange::status(TicketStatus::Sold), null)) {
-                $this->events->push('ticket.updated', ['ticketId' => $ticket->id, 'sectionId' => $ticket->sectionId, 'state' => TicketStatus::Sold->code(), 'platformId' => $ticket->platformId, 'priceCents' => $soldPrice ?? $ticket->priceCents, 'runId' => null]);
+            // The row points at the selling platform afterwards, even when the sale landed mid-transfer.
+            $change = \is_string($externalRef) ? TicketChange::sold($platform->id, $externalRef) : TicketChange::status(TicketStatus::Sold);
+            if ($this->tickets->apply($ticket, $change, null)) {
+                $this->events->push('ticket.updated', ['ticketId' => $ticket->id, 'sectionId' => $ticket->sectionId, 'state' => TicketStatus::Sold->code(), 'platformId' => $change->listing->platformId ?? $ticket->platformId, 'priceCents' => $soldPrice ?? $ticket->priceCents, 'runId' => null]);
                 $this->events->push('webhook.received', ['platform' => $code->value, 'ticketId' => $ticket->id, 'event' => $event, 'soldPriceCents' => $soldPrice, 'conflictRetried' => $i > 0]);
                 break;
             }
@@ -88,6 +95,11 @@ final readonly class ListingSoldHandler
         }
 
         return $outcome;
+    }
+
+    private function isListingInFlight(int $ticketId, int $platformId): bool
+    {
+        return false !== $this->db->fetchOne('SELECT 1 FROM jobs WHERE ticket_id = ? AND platform_id = ? AND status = ? LIMIT 1', [$ticketId, $platformId, JobStatus::InFlight->value]);
     }
 
     public function isDuplicate(PlatformCode $code, string $deliveryId): bool

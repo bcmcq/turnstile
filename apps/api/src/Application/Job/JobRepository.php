@@ -140,6 +140,17 @@ final readonly class JobRepository
         return $this->rows($where, $params, 'ORDER BY updated_at DESC, id DESC LIMIT ' . $limit . ' OFFSET ' . $offset);
     }
 
+    /** The ledger key this job claimed (a replay shares the original run's), null until a worker has claimed it. */
+    public function idempotencyKey(int $jobId): ?string
+    {
+        $key = $this->db->fetchOne(
+            'SELECT ta.idempotency_key FROM jobs j JOIN runs r ON r.id = j.run_id LEFT JOIN ticket_actions ta ON ta.ticket_id = j.ticket_id AND ta.run_id = COALESCE(r.replay_of_id, r.id) WHERE j.id = ?',
+            [$jobId],
+        );
+
+        return \is_string($key) ? $key : null;
+    }
+
     /** @return list<JobAttemptRow> */
     public function attempts(int $jobId): array
     {
