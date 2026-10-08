@@ -7,15 +7,9 @@ namespace App\Application\Run;
 use App\Domain\Run\RunStatus;
 use App\Domain\Run\RunType;
 
-/**
- * @phpstan-type Selection array{sections: list<int>, tickets: list<int>}
- */
 final readonly class RunRow
 {
-    /**
-     * @param Selection            $selection
-     * @param array<string, mixed> $params
-     */
+    /** @param array<string, mixed> $params */
     public function __construct(
         public string $id,
         public int $number,
@@ -23,7 +17,7 @@ final readonly class RunRow
         public RunStatus $status,
         public int $eventId,
         public ?int $targetPlatformId,
-        public array $selection,
+        public Selection $selection,
         public array $params,
         public ?string $replayOfId,
         public ?RunType $replayOfType,

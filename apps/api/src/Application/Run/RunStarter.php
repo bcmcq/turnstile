@@ -12,6 +12,7 @@ use App\Domain\Platform\Platform;
 use App\Domain\Run\Run;
 use App\Domain\Run\RunType;
 use Doctrine\ORM\EntityManagerInterface;
+use Symfony\Component\Lock\LockFactory;
 use Symfony\Component\Messenger\MessageBusInterface;
 
 /** Validates the request against the current state, persists the Run, and hands fan-out to the control queue. */
@@ -22,10 +23,23 @@ final readonly class RunStarter
         private RunRepository $runs,
         private MessageBusInterface $bus,
         private EventRecorder $events,
+        private LockFactory $locks,
     ) {
     }
 
     public function start(StartRunRequest $request): RunRow
+    {
+        // "One run at a time" is check-then-insert; the lock serialises concurrent POSTs so the second sees the first.
+        $lock = $this->locks->createLock('run-start', ttl: 10.0);
+        $lock->acquire(blocking: true);
+        try {
+            return $this->create($request);
+        } finally {
+            $lock->release();
+        }
+    }
+
+    private function create(StartRunRequest $request): RunRow
     {
         if (null !== $this->runs->active()) {
             throw new RunConflictException('A run is already active; wait for it to finish or cancel it');
@@ -35,7 +49,7 @@ final readonly class RunStarter
         $target = null;
         $params = [];
         $replayOf = null;
-        $selection = ['sections' => $request->selection->sections, 'tickets' => $request->selection->tickets];
+        $selection = $request->selection;
 
         switch ($request->type) {
             case RunType::Transfer:
@@ -48,7 +62,7 @@ final readonly class RunStarter
                 $origin = $this->runs->lastCompleted() ?? throw new RunConflictException('nothing to replay yet');
                 $replayOf = $this->em->getReference(Run::class, \Symfony\Component\Uid\Uuid::fromString($origin->id));
                 $params = ['limit' => $request->replayLimit];
-                $selection = ['sections' => [], 'tickets' => []];
+                $selection = new Selection();
                 break;
             case RunType::Fill:
                 throw new RunConflictException('fill is done by the seeder; use POST /api/demo/reset');
@@ -59,7 +73,7 @@ final readonly class RunStarter
             throw new RunConflictException('select at least one section or seat');
         }
 
-        $run = new Run($this->runs->nextNumber(), $request->type, $event, $selection, $params, $target);
+        $run = new Run($this->runs->nextNumber(), $request->type, $event, $selection->toArray(), $params, $target);
         if (null !== $replayOf) {
             $run->setReplayOf($replayOf);
         }

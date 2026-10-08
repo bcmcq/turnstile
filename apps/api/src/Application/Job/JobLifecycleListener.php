@@ -7,6 +7,9 @@ namespace App\Application\Job;
 use App\Application\Job\Message\ProcessTicketJob;
 use App\Application\Realtime\EventRecorder;
 use App\Application\Realtime\RunCounters;
+use App\Application\Run\Message\RunStarted;
+use App\Application\Run\RunConflictException;
+use App\Application\Run\RunControl;
 use App\Application\Run\RunFinalizer;
 use App\Domain\Job\JobOutcome;
 use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
@@ -21,6 +24,7 @@ final class JobLifecycleListener
         private readonly RunCounters $counters,
         private readonly EventRecorder $events,
         private readonly RunFinalizer $finalizer,
+        private readonly RunControl $control,
     ) {
     }
 
@@ -28,6 +32,17 @@ final class JobLifecycleListener
     public function onFailed(WorkerMessageFailedEvent $event): void
     {
         $message = $event->getEnvelope()->getMessage();
+        if ($message instanceof RunStarted) {
+            // A fan-out that died mid-way left the run "dispatching" with a partial job set; a retry would return
+            // early and the run would block every new one. Cancel it so the dispatched jobs drain and the UI moves on.
+            try {
+                $this->control->cancel($message->runId);
+            } catch (RunConflictException) {
+                // already terminal
+            }
+
+            return;
+        }
         if (!$message instanceof ProcessTicketJob || $event->willRetry()) {
             return;
         }

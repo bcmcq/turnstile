@@ -42,7 +42,9 @@ final class RunFinalizer
             $s['dead_lettered'] > 0 => RunStatus::CompletedWithFailures,
             default => RunStatus::Completed,
         };
-        $this->runs->setStatus($runId, $status);
+        if (!$this->runs->setStatus($runId, $status)) {
+            return; // another worker finalised first
+        }
         $this->runs->writeCounters($runId, $s);
         $this->flipSections($run, $status);
         $this->events->push('run.finished', ['runId' => $runId, 'number' => $run->number, 'status' => $status->value, 'completed' => $s['completed'], 'skipped' => $s['skipped'], 'deadLettered' => $s['dead_lettered'], 'conflicts' => $c['conflicts'], 'soldDuringRun' => $c['sold_during_run']]);
@@ -51,7 +53,7 @@ final class RunFinalizer
     /** close_section / open_section flip the section rows once their tickets are done. */
     private function flipSections(RunRow $run, RunStatus $status): void
     {
-        if (RunStatus::Cancelled === $status || [] === $run->selection['sections']) {
+        if (RunStatus::Cancelled === $status || [] === $run->selection->sections) {
             return;
         }
         $sectionStatus = match ($run->type) {
@@ -64,10 +66,10 @@ final class RunFinalizer
         }
         $this->db->executeStatement(
             'UPDATE sections SET status = ?, updated_at = NOW() WHERE id IN (?)',
-            [$sectionStatus->value, $run->selection['sections']],
+            [$sectionStatus->value, $run->selection->sections],
             [\Doctrine\DBAL\ParameterType::STRING, \Doctrine\DBAL\ArrayParameterType::INTEGER],
         );
-        foreach ($run->selection['sections'] as $sectionId) {
+        foreach ($run->selection->sections as $sectionId) {
             $this->events->push('section.updated', ['sectionId' => $sectionId, 'status' => $sectionStatus->value, 'runId' => Uuid::fromString($run->id)->toRfc4122()]);
         }
     }
