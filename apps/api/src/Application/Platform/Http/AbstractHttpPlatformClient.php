@@ -24,11 +24,9 @@ abstract class AbstractHttpPlatformClient implements PlatformClientInterface
     /**
      * @param array{json?: array<string, int|string>, body?: array<string, int|string>, headers?: array<string, string>} $options
      *
-     * @return array{array<string, mixed>, int} decoded body, latency ms
-     *
      * @throws PlatformApiException
      */
-    protected function call(string $method, string $path, array $options, string $idempotencyKey, string $idempotencyHeader): array
+    protected function call(string $method, string $path, array $options, string $idempotencyKey, string $idempotencyHeader): PlatformResponse
     {
         $options['headers'] = array_merge($this->defaultHeaders(), $options['headers'] ?? [], [$idempotencyHeader => $idempotencyKey]);
         $options['timeout'] = self::TIMEOUT_SECONDS;          // idle
@@ -51,16 +49,17 @@ abstract class AbstractHttpPlatformClient implements PlatformClientInterface
 
         if ($status >= 200 && $status < 300) {
             if (204 === $status) {
-                return [[], $latency()];
+                return new PlatformResponse([], $latency(), $this->code()->displayName());
             }
             if (!\is_array($decoded)) {
                 throw new PlatformApiException(PlatformFailure::ServerError, $this->code()->displayName() . ': empty or malformed ' . $status . ' response', $status, null, $latency());
             }
 
-            return [$body, $latency()];
+            return new PlatformResponse($body, $latency(), $this->code()->displayName());
         }
         throw match (true) {
-            429 === $status => new PlatformApiException(PlatformFailure::RateLimited, $this->code()->displayName() . ': rate limited', 429, 1000 * (int) ($response->getHeaders(false)['retry-after'][0] ?? 1), $latency()),
+            // Retry-After may be an HTTP date, which casts to 0; never hand the retry strategy a zero delay.
+            429 === $status => new PlatformApiException(PlatformFailure::RateLimited, $this->code()->displayName() . ': rate limited', 429, 1000 * max(1, (int) ($response->getHeaders(false)['retry-after'][0] ?? 1)), $latency()),
             $status >= 500 => new PlatformApiException(PlatformFailure::ServerError, $this->code()->displayName() . ': ' . $error, $status, null, $latency()),
             409 === $status && 'listing_sold' === $error => new PlatformApiException(PlatformFailure::ListingSold, $this->code()->displayName() . ': listing already sold', 409, null, $latency()),
             default => new PlatformApiException(PlatformFailure::Rejected, $this->code()->displayName() . ': ' . $error, $status, null, $latency()),
@@ -69,24 +68,4 @@ abstract class AbstractHttpPlatformClient implements PlatformClientInterface
 
     /** @return array<string, string> */
     abstract protected function defaultHeaders(): array;
-
-    /** @param array<string, mixed> $body */
-    protected function str(array $body, string $key): string
-    {
-        $v = $body[$key] ?? null;
-        if (\is_string($v) || \is_int($v)) {
-            return (string) $v;
-        }
-        throw new PlatformApiException(PlatformFailure::Rejected, $this->code()->displayName() . ": response missing \"{$key}\"");
-    }
-
-    /** @param array<string, mixed> $body */
-    protected function int(array $body, string $key): int
-    {
-        $v = $body[$key] ?? null;
-        if (is_numeric($v)) {
-            return (int) $v;
-        }
-        throw new PlatformApiException(PlatformFailure::Rejected, $this->code()->displayName() . ": response missing \"{$key}\"");
-    }
 }

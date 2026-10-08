@@ -9,12 +9,10 @@ use App\Domain\Ticket\TicketStatus;
 /** The new values an action wants on a ticket. Unset fields keep their current value; platform/ref can be set to null explicitly. */
 final readonly class TicketChange
 {
-    /**
-     * @param array{platformId: int|null, externalRef: string|null}|null $listing null = leave listing fields alone
-     */
+    /** @param Listing|null $listing null = leave listing fields alone */
     private function __construct(
         public ?TicketStatus $status,
-        public ?array $listing,
+        public ?Listing $listing,
         public ?int $priceCents,
         public ?string $barcode,
     ) {
@@ -22,12 +20,12 @@ final readonly class TicketChange
 
     public static function listed(int $platformId, string $externalRef, int $priceCents): self
     {
-        return new self(TicketStatus::Listed, ['platformId' => $platformId, 'externalRef' => $externalRef], $priceCents, null);
+        return new self(TicketStatus::Listed, new Listing($platformId, $externalRef), $priceCents, null);
     }
 
     public static function unlisted(TicketStatus $status, int $priceCents): self
     {
-        return new self($status, ['platformId' => null, 'externalRef' => null], $priceCents, null);
+        return new self($status, new Listing(null, null), $priceCents, null);
     }
 
     public static function price(int $priceCents): self

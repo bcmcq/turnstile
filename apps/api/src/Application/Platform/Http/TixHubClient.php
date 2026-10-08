@@ -22,9 +22,9 @@ final class TixHubClient extends AbstractHttpPlatformClient
     #[\Override]
     public function list(ListingRequest $request, string $idempotencyKey): ListingResult
     {
-        [$body, $ms] = $this->call('POST', '/listings', ['json' => ['ticket_id' => $request->ticketId, 'price_cents' => $request->priceCents, 'barcode' => $request->barcode]], $idempotencyKey, self::IDEMPOTENCY_HEADER);
+        $r = $this->call('POST', '/listings', ['json' => ['ticket_id' => $request->ticketId, 'price_cents' => $request->priceCents, 'barcode' => $request->barcode]], $idempotencyKey, self::IDEMPOTENCY_HEADER);
 
-        return new ListingResult($this->str($body, 'id'), $this->int($body, 'price_cents'), $ms);
+        return new ListingResult($r->str('id'), $r->int('price_cents'), $r->latencyMs);
     }
 
     #[\Override]
@@ -36,17 +36,15 @@ final class TixHubClient extends AbstractHttpPlatformClient
     #[\Override]
     public function reprice(string $externalRef, int $priceCents, string $idempotencyKey): ListingResult
     {
-        [$body, $ms] = $this->call('PATCH', '/listings/' . $externalRef . '/price', ['json' => ['price_cents' => $priceCents]], $idempotencyKey, self::IDEMPOTENCY_HEADER);
+        $r = $this->call('PATCH', '/listings/' . $externalRef . '/price', ['json' => ['price_cents' => $priceCents]], $idempotencyKey, self::IDEMPOTENCY_HEADER);
 
-        return new ListingResult($externalRef, $this->int($body, 'price_cents'), $ms);
+        return new ListingResult($externalRef, $r->int('price_cents'), $r->latencyMs);
     }
 
     #[\Override]
     public function regenerate(string $externalRef, string $idempotencyKey): string
     {
-        [$body] = $this->call('POST', '/listings/' . $externalRef . '/regenerate', [], $idempotencyKey, self::IDEMPOTENCY_HEADER);
-
-        return $this->str($body, 'barcode');
+        return $this->call('POST', '/listings/' . $externalRef . '/regenerate', [], $idempotencyKey, self::IDEMPOTENCY_HEADER)->str('barcode');
     }
 
     #[\Override]

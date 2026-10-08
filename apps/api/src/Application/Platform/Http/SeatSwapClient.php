@@ -22,9 +22,9 @@ final class SeatSwapClient extends AbstractHttpPlatformClient
     #[\Override]
     public function list(ListingRequest $request, string $idempotencyKey): ListingResult
     {
-        [$body, $ms] = $this->call('POST', '/inventory', ['json' => ['externalId' => $request->ticketId, 'askingPrice' => self::dollars($request->priceCents), 'barcode' => $request->barcode]], $idempotencyKey, self::IDEMPOTENCY_HEADER);
+        $r = $this->call('POST', '/inventory', ['json' => ['externalId' => $request->ticketId, 'askingPrice' => self::dollars($request->priceCents), 'barcode' => $request->barcode]], $idempotencyKey, self::IDEMPOTENCY_HEADER);
 
-        return new ListingResult($this->str($body, 'inventoryId'), self::cents($this->str($body, 'askingPrice')), $ms);
+        return new ListingResult($r->str('inventoryId'), self::cents($r->str('askingPrice')), $r->latencyMs);
     }
 
     #[\Override]
@@ -36,17 +36,15 @@ final class SeatSwapClient extends AbstractHttpPlatformClient
     #[\Override]
     public function reprice(string $externalRef, int $priceCents, string $idempotencyKey): ListingResult
     {
-        [$body, $ms] = $this->call('PUT', '/inventory/' . $externalRef, ['json' => ['askingPrice' => self::dollars($priceCents)]], $idempotencyKey, self::IDEMPOTENCY_HEADER);
+        $r = $this->call('PUT', '/inventory/' . $externalRef, ['json' => ['askingPrice' => self::dollars($priceCents)]], $idempotencyKey, self::IDEMPOTENCY_HEADER);
 
-        return new ListingResult($externalRef, self::cents($this->str($body, 'askingPrice')), $ms);
+        return new ListingResult($externalRef, self::cents($r->str('askingPrice')), $r->latencyMs);
     }
 
     #[\Override]
     public function regenerate(string $externalRef, string $idempotencyKey): string
     {
-        [$body] = $this->call('POST', '/inventory/' . $externalRef . '/reissue', [], $idempotencyKey, self::IDEMPOTENCY_HEADER);
-
-        return $this->str($body, 'barcode');
+        return $this->call('POST', '/inventory/' . $externalRef . '/reissue', [], $idempotencyKey, self::IDEMPOTENCY_HEADER)->str('barcode');
     }
 
     #[\Override]

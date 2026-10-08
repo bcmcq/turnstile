@@ -22,10 +22,9 @@ final class PassMarketClient extends AbstractHttpPlatformClient
     #[\Override]
     public function list(ListingRequest $request, string $idempotencyKey): ListingResult
     {
-        [$body, $ms] = $this->call('POST', '/v2/offers', ['body' => ['ticket' => $request->ticketId, 'price_cents' => $request->priceCents, 'barcode' => $request->barcode]], $idempotencyKey, self::IDEMPOTENCY_HEADER);
-        $offer = self::offer($body);
+        $offer = $this->call('POST', '/v2/offers', ['body' => ['ticket' => $request->ticketId, 'price_cents' => $request->priceCents, 'barcode' => $request->barcode]], $idempotencyKey, self::IDEMPOTENCY_HEADER)->nested('offer');
 
-        return new ListingResult($this->str($offer, 'id'), $this->int($offer, 'price_cents'), $ms);
+        return new ListingResult($offer->str('id'), $offer->int('price_cents'), $offer->latencyMs);
     }
 
     #[\Override]
@@ -37,38 +36,20 @@ final class PassMarketClient extends AbstractHttpPlatformClient
     #[\Override]
     public function reprice(string $externalRef, int $priceCents, string $idempotencyKey): ListingResult
     {
-        [$body, $ms] = $this->call('POST', '/v2/offers/' . $externalRef . '/price', ['body' => ['price_cents' => $priceCents]], $idempotencyKey, self::IDEMPOTENCY_HEADER);
+        $offer = $this->call('POST', '/v2/offers/' . $externalRef . '/price', ['body' => ['price_cents' => $priceCents]], $idempotencyKey, self::IDEMPOTENCY_HEADER)->nested('offer');
 
-        return new ListingResult($externalRef, $this->int(self::offer($body), 'price_cents'), $ms);
+        return new ListingResult($externalRef, $offer->int('price_cents'), $offer->latencyMs);
     }
 
     #[\Override]
     public function regenerate(string $externalRef, string $idempotencyKey): string
     {
-        [$body] = $this->call('POST', '/v2/offers/' . $externalRef . '/barcode', ['body' => []], $idempotencyKey, self::IDEMPOTENCY_HEADER);
-
-        return $this->str(self::offer($body), 'barcode');
+        return $this->call('POST', '/v2/offers/' . $externalRef . '/barcode', ['body' => []], $idempotencyKey, self::IDEMPOTENCY_HEADER)->nested('offer')->str('barcode');
     }
 
     #[\Override]
     protected function defaultHeaders(): array
     {
         return ['Authorization' => 'Basic ' . base64_encode('turnstile:passmarket-demo')];
-    }
-
-    /**
-     * @param array<string, mixed> $body
-     *
-     * @return array<string, mixed>
-     */
-    private static function offer(array $body): array
-    {
-        $offer = $body['offer'] ?? null;
-        if (!\is_array($offer)) {
-            return [];
-        }
-        /** @var array<string, mixed> $offer */
-
-        return $offer;
     }
 }

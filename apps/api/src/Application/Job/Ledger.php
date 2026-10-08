@@ -56,7 +56,7 @@ final readonly class Ledger
             [
                 ActionState::Applied->value,
                 $before->platformId,
-                null === $change->listing ? $before->platformId : $change->listing['platformId'],
+                null === $change->listing ? $before->platformId : $change->listing->platformId,
                 $before->priceCents,
                 $change->priceCents ?? $before->priceCents,
                 $before->barcode,

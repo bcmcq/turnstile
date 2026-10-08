@@ -18,10 +18,7 @@ final readonly class JobRepository
 
     public function find(int $id): ?JobRow
     {
-        /** @var array{id: int, run_id: string, ticket_id: int, platform_id: int|null, status: string, attempts: int, max_attempts: int, last_outcome: string|null, last_error: string|null, worker_id: string|null, duration_ms: int|null}|false $r */
-        $r = $this->db->fetchAssociative('SELECT id, BIN_TO_UUID(run_id) AS run_id, ticket_id, platform_id, status, attempts, max_attempts, last_outcome, last_error, worker_id, duration_ms FROM jobs WHERE id = ?', [$id]);
-
-        return false === $r ? null : self::hydrate($r);
+        return $this->rows('id = ?', [$id])[0] ?? null;
     }
 
     /**
@@ -131,29 +128,19 @@ final readonly class JobRepository
     /** @return list<JobRow> */
     public function listByRun(string $runId, ?JobStatus $status, int $limit, int $offset): array
     {
-        $sql = 'SELECT id, BIN_TO_UUID(run_id) AS run_id, ticket_id, platform_id, status, attempts, max_attempts, last_outcome, last_error, worker_id, duration_ms FROM jobs WHERE run_id = UUID_TO_BIN(?)';
-        $params = [$runId];
-        if (null !== $status) {
-            $sql .= ' AND status = ?';
-            $params[] = $status->value;
-        }
-        $sql .= ' ORDER BY updated_at DESC, id DESC LIMIT ' . $limit . ' OFFSET ' . $offset;
-        $out = [];
-        /** @var array{id: int, run_id: string, ticket_id: int, platform_id: int|null, status: string, attempts: int, max_attempts: int, last_outcome: string|null, last_error: string|null, worker_id: string|null, duration_ms: int|null} $r */
-        foreach ($this->db->iterateAssociative($sql, $params) as $r) {
-            $out[] = self::hydrate($r);
-        }
+        $where = 'run_id = UUID_TO_BIN(?)' . (null === $status ? '' : ' AND status = ?');
+        $params = null === $status ? [$runId] : [$runId, $status->value];
 
-        return $out;
+        return $this->rows($where, $params, 'ORDER BY updated_at DESC, id DESC LIMIT ' . $limit . ' OFFSET ' . $offset);
     }
 
-    /** @return list<array{attemptNo: int, workerId: string, outcome: string|null, httpStatus: int|null, latencyMs: int|null, retryAfterMs: int|null, error: string|null, startedAt: string, finishedAt: string|null}> */
+    /** @return list<JobAttemptRow> */
     public function attempts(int $jobId): array
     {
         $out = [];
         /** @var array{attempt_no: int, worker_id: string, outcome: string|null, http_status: int|null, latency_ms: int|null, retry_after_ms: int|null, error: string|null, started_at: string, finished_at: string|null} $r */
         foreach ($this->db->iterateAssociative('SELECT attempt_no, worker_id, outcome, http_status, latency_ms, retry_after_ms, error, started_at, finished_at FROM job_attempts WHERE job_id = ? ORDER BY attempt_no', [$jobId]) as $r) {
-            $out[] = ['attemptNo' => (int) $r['attempt_no'], 'workerId' => $r['worker_id'], 'outcome' => $r['outcome'], 'httpStatus' => null === $r['http_status'] ? null : (int) $r['http_status'], 'latencyMs' => null === $r['latency_ms'] ? null : (int) $r['latency_ms'], 'retryAfterMs' => null === $r['retry_after_ms'] ? null : (int) $r['retry_after_ms'], 'error' => $r['error'], 'startedAt' => $r['started_at'], 'finishedAt' => $r['finished_at']];
+            $out[] = new JobAttemptRow((int) $r['attempt_no'], $r['worker_id'], $r['outcome'], null === $r['http_status'] ? null : (int) $r['http_status'], null === $r['latency_ms'] ? null : (int) $r['latency_ms'], null === $r['retry_after_ms'] ? null : (int) $r['retry_after_ms'], $r['error'], $r['started_at'], $r['finished_at']);
         }
 
         return $out;
@@ -167,9 +154,21 @@ final readonly class JobRepository
         );
     }
 
-    /** @param array{id: int, run_id: string, ticket_id: int, platform_id: int|null, status: string, attempts: int, max_attempts: int, last_outcome: string|null, last_error: string|null, worker_id: string|null, duration_ms: int|null} $r */
-    private static function hydrate(array $r): JobRow
+    /**
+     * The only place a raw job row exists; everything past it is a JobRow.
+     *
+     * @param list<int|string> $params
+     *
+     * @return list<JobRow>
+     */
+    private function rows(string $where, array $params, string $suffix = ''): array
     {
-        return new JobRow((int) $r['id'], $r['run_id'], (int) $r['ticket_id'], null === $r['platform_id'] ? null : (int) $r['platform_id'], JobStatus::from($r['status']), (int) $r['attempts'], (int) $r['max_attempts'], null === $r['last_outcome'] ? null : JobOutcome::from($r['last_outcome']), $r['last_error'], $r['worker_id'], null === $r['duration_ms'] ? null : (int) $r['duration_ms']);
+        $out = [];
+        /** @var array{id: int, run_id: string, ticket_id: int, platform_id: int|null, status: string, attempts: int, max_attempts: int, last_outcome: string|null, last_error: string|null, worker_id: string|null, duration_ms: int|null} $r */
+        foreach ($this->db->iterateAssociative('SELECT id, BIN_TO_UUID(run_id) AS run_id, ticket_id, platform_id, status, attempts, max_attempts, last_outcome, last_error, worker_id, duration_ms FROM jobs WHERE ' . $where . ' ' . $suffix, $params) as $r) {
+            $out[] = new JobRow((int) $r['id'], $r['run_id'], (int) $r['ticket_id'], null === $r['platform_id'] ? null : (int) $r['platform_id'], JobStatus::from($r['status']), (int) $r['attempts'], (int) $r['max_attempts'], null === $r['last_outcome'] ? null : JobOutcome::from($r['last_outcome']), $r['last_error'], $r['worker_id'], null === $r['duration_ms'] ? null : (int) $r['duration_ms']);
+        }
+
+        return $out;
     }
 }

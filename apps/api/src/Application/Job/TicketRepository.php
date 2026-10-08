@@ -36,9 +36,9 @@ final readonly class TicketRepository
         }
         if (null !== $change->listing) {
             $set[] = 'platform_id = ?';
-            $params[] = $change->listing['platformId'];
+            $params[] = $change->listing->platformId;
             $set[] = 'external_ref = ?';
-            $params[] = $change->listing['externalRef'];
+            $params[] = $change->listing->externalRef;
         }
         if (null !== $change->priceCents) {
             $set[] = 'price_cents = ?';
