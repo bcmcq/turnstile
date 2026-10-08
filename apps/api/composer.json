@@ -28,7 +28,6 @@
         "symfony/rate-limiter": "7.4.*",
         "symfony/redis-messenger": "7.4.*",
         "symfony/runtime": "7.4.*",
-        "symfony/scheduler": "7.4.*",
         "symfony/serializer": "7.4.*",
         "symfony/uid": "7.4.*",
         "symfony/validator": "7.4.*",
@@ -41,6 +40,7 @@
         "phpstan/phpstan-doctrine": "^2.0",
         "phpstan/phpstan-symfony": "^2.1",
         "phpunit/phpunit": "^13.4",
+        "symfony/browser-kit": "7.4.*",
         "symfony/maker-bundle": "^1.68"
     },
     "config": {
