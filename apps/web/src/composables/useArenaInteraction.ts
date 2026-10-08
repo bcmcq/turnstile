@@ -42,13 +42,12 @@ export function useArenaInteraction(opts: ArenaInteractionOptions) {
   )
 
   function seatPickRadius(): number {
-    // at least one seat pitch, or 6 CSS px, whichever is larger in unit space
-    return Math.max(2, 6 / opts.view.scale)
+    // half a seat pitch, or 6 CSS px, whichever is larger in unit space
+    return Math.max(2.7, 6 / opts.view.scale)
   }
 
   function labelAt(sx: number, sy: number): number | null {
     for (const s of arena.sections) {
-      if (s.tier === 'floor') continue
       const [lx, ly] = opts.toScreen(s.geometry.labelX, s.geometry.labelY)
       if (Math.abs(lx - sx) <= LABEL_PICK_PX && Math.abs(ly - sy) <= LABEL_PICK_PX * 0.7) return s.id
     }

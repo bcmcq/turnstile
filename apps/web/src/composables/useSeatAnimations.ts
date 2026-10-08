@@ -2,7 +2,7 @@ import { gsap } from 'gsap'
 import { onBeforeUnmount, onMounted } from 'vue'
 import type { LogEvent, SeatUpdate, TicketStateCode } from '@/api/types'
 import type { ArenaView } from '@/composables/useArenaCanvas'
-import { COLORS, FLOOR, SeatPalette } from '@/lib/arenaPalette'
+import { COLORS, FLOOR, SeatPalette, fillSeat, seatPath } from '@/lib/arenaPalette'
 import { liveBus } from '@/lib/liveBus'
 import type { SeatTable } from '@/lib/seatTable'
 
@@ -31,6 +31,8 @@ const FLICKER_MS = 400
 const REVEAL_MS = 1_600
 const REVEAL_POP_MS = 420
 const ease = gsap.parseEase('power2.out')
+// The wave itself runs at constant speed: an ease-out stalls on the outer rings, which hold the most seats.
+const REVEAL_STEPS = 6
 
 /**
  * Keeps per-seat overlay state (in flight, retry wait, conflict, failed) and short-lived pulses, and
@@ -176,7 +178,7 @@ export function useSeatAnimations(opts: SeatAnimationOptions) {
     revealShift = -min
     const dist = revealDist
     revealOrder = Int32Array.from({ length: seats.size }, (_, i) => i).sort((a, b) => dist[a] - dist[b])
-    reveal = { start: performance.now(), duration: REVEAL_MS }
+    reveal = { start: performance.now(), duration: REVEAL_MS + REVEAL_POP_MS }
     startTicker()
   }
 
@@ -193,7 +195,7 @@ export function useSeatAnimations(opts: SeatAnimationOptions) {
   function revealClip(view: ArenaView): { x: number; y: number; w: number; h: number; r: number } | null {
     if (!reveal || !revealDist) return null
     const t = Math.min(1, (performance.now() - reveal.start) / reveal.duration)
-    const grow = Math.max(0, ease(t) * revealMax - bandUnits() - revealShift)
+    const grow = Math.max(0, revealReach(t) - bandUnits() - revealShift)
     const w = FLOOR.width + 2 * grow
     const h = FLOOR.height + 2 * grow
     return {
@@ -207,6 +209,11 @@ export function useSeatAnimations(opts: SeatAnimationOptions) {
 
   function bandUnits(): number {
     return revealMax * (REVEAL_POP_MS / REVEAL_MS)
+  }
+
+  /** Wavefront distance at progress t: linear, overshooting by one band so the last ring settles too. */
+  function revealReach(t: number): number {
+    return t * (revealMax + bandUnits())
   }
 
   /** First index in revealOrder whose distance is >= d. */
@@ -241,7 +248,7 @@ export function useSeatAnimations(opts: SeatAnimationOptions) {
       switch (overlay[i]) {
         case Overlay.InFlight:
           ctx.fillStyle = COLORS.inflight
-          ctx.fillRect(x - half * 1.3, y - half * 1.3, s * 1.3, s * 1.3)
+          fillSeat(ctx, x - half * 1.3, y - half * 1.3, s * 1.3, s * 1.3)
           break
         case Overlay.RetryWait:
           ctx.strokeStyle = COLORS.inflight
@@ -250,11 +257,11 @@ export function useSeatAnimations(opts: SeatAnimationOptions) {
           break
         case Overlay.Conflict:
           ctx.fillStyle = COLORS.amber
-          ctx.fillRect(x - half, y - half, s, s)
+          fillSeat(ctx, x - half, y - half, s, s)
           break
         case Overlay.Failed:
           ctx.fillStyle = COLORS.fail
-          ctx.fillRect(x - half, y - half, s, s)
+          fillSeat(ctx, x - half, y - half, s, s)
           break
         default:
           break
@@ -262,20 +269,32 @@ export function useSeatAnimations(opts: SeatAnimationOptions) {
     }
 
     if (reveal && revealOrder && revealDist) {
-      // Seats whose distance is within one pop-duration of the wavefront: scale 2.4× → 1×, fade in, final color.
+      // Seats within one pop-duration of the wavefront: scale 2.4× → 1×, fade in, final color. Progress is
+      // quantized into a few steps so the band is a handful of path fills, not one per seat.
       const t = Math.min(1, (now - reveal.start) / reveal.duration)
-      const reach = ease(t) * revealMax
+      const reach = revealReach(t)
       const band = bandUnits()
       const from = lowerBound(reach - band)
       const to = lowerBound(reach)
       const palette = opts.palette()
+      const buckets = new Map<number, number[]>()
       for (let k = from; k < to; k++) {
         const i = revealOrder[k]
-        const p = Math.min(1, (reach - revealDist[i]) / band) // 0 = just arrived, 1 = settled
+        const step = Math.min(REVEAL_STEPS - 1, Math.floor(((reach - revealDist[i]) / band) * REVEAL_STEPS))
+        const key = palette.slot(seats.state[i], seats.platformId[i]) * REVEAL_STEPS + step
+        let list = buckets.get(key)
+        if (!list) buckets.set(key, (list = []))
+        list.push(i)
+      }
+      for (const [key, list] of buckets) {
+        const step = key % REVEAL_STEPS
+        const p = (step + 0.5) / REVEAL_STEPS // 0 = just arrived, 1 = settled
         const grow = 1 + 1.4 * (1 - p) * (1 - p)
         ctx.globalAlpha = 0.25 + 0.75 * p
-        ctx.fillStyle = palette.colors[palette.slot(seats.state[i], seats.platformId[i])]
-        ctx.fillRect(sx(i) - half * grow, sy(i) - half * grow, s * grow, s * grow)
+        ctx.fillStyle = palette.colors[(key - step) / REVEAL_STEPS]
+        ctx.beginPath()
+        for (const i of list) seatPath(ctx, sx(i) - half * grow, sy(i) - half * grow, s * grow, s * grow)
+        ctx.fill()
       }
       ctx.globalAlpha = 1
     }
@@ -288,11 +307,11 @@ export function useSeatAnimations(opts: SeatAnimationOptions) {
         const grow = 1 + 1.2 * (1 - ease(t))
         ctx.globalAlpha = 1 - t
         ctx.fillStyle = p.color
-        ctx.fillRect(x - half * grow, y - half * grow, s * grow, s * grow)
+        fillSeat(ctx, x - half * grow, y - half * grow, s * grow, s * grow)
       } else {
         ctx.globalAlpha = 0.5 + 0.5 * Math.sin(t * Math.PI * 4) ** 2
         ctx.fillStyle = p.color
-        ctx.fillRect(x - half * 1.4, y - half * 1.4, s * 1.4, s * 1.4)
+        fillSeat(ctx, x - half * 1.4, y - half * 1.4, s * 1.4, s * 1.4)
       }
     }
     ctx.globalAlpha = 1

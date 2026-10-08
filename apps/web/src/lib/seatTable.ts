@@ -2,7 +2,7 @@ import type { SeatsPayload, TicketStateCode } from '@/api/types'
 
 /**
  * Column store for every seat: one typed array per field, indexed 0..n-1, plus ticketId → index.
- * 100k seats fit in a few MB and the canvas can iterate them without allocating.
+ * Even 100k seats fit in a few MB and the canvas can iterate them without allocating.
  */
 export class SeatTable {
   readonly size: number

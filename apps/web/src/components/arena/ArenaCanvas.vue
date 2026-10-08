@@ -4,8 +4,7 @@ import SeatTooltip from '@/components/arena/SeatTooltip.vue'
 import { useArenaCanvas } from '@/composables/useArenaCanvas'
 import { useArenaInteraction } from '@/composables/useArenaInteraction'
 import { useSeatAnimations } from '@/composables/useSeatAnimations'
-import { COLORS } from '@/lib/arenaPalette'
-import { SeatPalette } from '@/lib/arenaPalette'
+import { COLORS, SeatPalette, fillSeat } from '@/lib/arenaPalette'
 import { useArenaStore } from '@/stores/arena'
 import { useRunStore } from '@/stores/run'
 
@@ -55,7 +54,7 @@ function drawSelection(ctx: CanvasRenderingContext2D, view: { scale: number; off
       const x = seats.x[i] * view.scale + view.offsetX
       const y = seats.y[i] * view.scale + view.offsetY
       if (x < -s || y < -s || x > view.width + s || y > view.height + s) continue
-      ctx.fillRect(x - half - 0.5, y - half - 0.5, s + 1, s + 1)
+      fillSeat(ctx, x - half - 0.5, y - half - 0.5, s + 1, s + 1)
     }
     ctx.globalAlpha = 1
   }
@@ -67,7 +66,7 @@ function drawSelection(ctx: CanvasRenderingContext2D, view: { scale: number; off
     const hovered = pick.hoveredSection.value === sec.id
     if (!selected && !hovered) continue
     const [lx, ly] = map.toScreen(sec.geometry.labelX, sec.geometry.labelY)
-    const label = sec.tier === 'floor' ? 'FLOOR' : sec.code
+    const label = sec.code
     const w = ctx.measureText(label).width + 12
     ctx.fillStyle = selected ? 'rgba(34,211,238,0.16)' : 'rgba(230,237,243,0.08)'
     ctx.strokeStyle = selected ? 'rgba(34,211,238,0.7)' : 'rgba(230,237,243,0.3)'
@@ -163,7 +162,7 @@ defineExpose({ map })
       :bounds="{ width: map.view.width, height: map.view.height }"
     />
     <div v-if="!arena.seats" class="absolute inset-0 grid place-items-center text-xs text-muted">
-      {{ arena.seatsError ?? 'loading 100,790 seats…' }}
+      {{ arena.seatsError ?? 'loading seats…' }}
     </div>
     <div class="absolute right-2 bottom-2 flex items-center gap-1 rounded-md border border-border bg-panel/90 p-1 text-xs backdrop-blur">
       <button type="button" class="size-6 rounded hover:bg-panel-2" title="Zoom out" @click="map.zoomOut">−</button>

@@ -12,21 +12,20 @@ use PHPUnit\Framework\TestCase;
 #[CoversClass(ArenaGeometry::class)]
 final class ArenaGeometryTest extends TestCase
 {
-    public function testBuildsAtLeastTheTargetNumberOfSeatsInThirtyThreeSections(): void
+    public function testBuildsAFewThousandSeatsInThirtyTwoSections(): void
     {
-        $arena = new ArenaGeometry(100_000);
+        $arena = new ArenaGeometry();
 
-        self::assertGreaterThanOrEqual(100_000, \count($arena->seats));
-        self::assertLessThan(102_000, \count($arena->seats));
-        self::assertCount(33, $arena->sections);
-        self::assertSame('FLR', $arena->sections[0]->code);
-        self::assertSame('101', $arena->sections[1]->code);
-        self::assertSame('216', $arena->sections[32]->code);
+        self::assertGreaterThan(3_000, \count($arena->seats));
+        self::assertLessThan(6_000, \count($arena->seats));
+        self::assertCount(32, $arena->sections);
+        self::assertSame('101', $arena->sections[0]->code);
+        self::assertSame('216', $arena->sections[31]->code);
     }
 
-    public function testEverySeatIsInsideTheCanvasAndOutsideTheFloorUnlessItIsAFloorSeat(): void
+    public function testEverySeatIsInsideTheCanvasAndOutsideTheFloor(): void
     {
-        $arena = new ArenaGeometry(100_000);
+        $arena = new ArenaGeometry();
         $cx = ArenaGeometry::WIDTH / 2;
         $cy = ArenaGeometry::HEIGHT / 2;
 
@@ -35,16 +34,14 @@ final class ArenaGeometryTest extends TestCase
             self::assertLessThan(ArenaGeometry::WIDTH, $seat->x);
             self::assertGreaterThan(0, $seat->y);
             self::assertLessThan(ArenaGeometry::HEIGHT, $seat->y);
-            if (0 !== $seat->sectionIndex) {
-                $insideFloor = abs($seat->x - $cx) < 150 && abs($seat->y - $cy) < 70;
-                self::assertFalse($insideFloor, "seat {$seat->rowLabel}-{$seat->seatNumber} of section {$seat->sectionIndex} overlaps the floor");
-            }
+            $insideFloor = abs($seat->x - $cx) < 150 && abs($seat->y - $cy) < 70;
+            self::assertFalse($insideFloor, "seat {$seat->rowLabel}-{$seat->seatNumber} of section {$seat->sectionIndex} overlaps the floor");
         }
     }
 
     public function testSeatNumbersAreUniqueWithinARowOfASection(): void
     {
-        $arena = new ArenaGeometry(100_000);
+        $arena = new ArenaGeometry();
         $seen = [];
         foreach ($arena->seats as $seat) {
             $key = $seat->sectionIndex . '|' . $seat->rowLabel . '|' . $seat->seatNumber;
@@ -55,13 +52,14 @@ final class ArenaGeometryTest extends TestCase
 
     public function testUpperSectionsSitOutsideLowerSections(): void
     {
-        $arena = new ArenaGeometry(100_000);
-        $lower = $arena->sections[1];
-        $upper = $arena->sections[17];
+        $arena = new ArenaGeometry();
+        $lower = $arena->sections[0];
+        $upper = $arena->sections[16];
 
         self::assertSame(SectionTier::Lower, $lower->tier);
         self::assertSame(SectionTier::Upper, $upper->tier);
-        self::assertSame($lower->angleStart, $upper->angleStart);
+        self::assertSame($lower->code, '101');
+        self::assertSame($upper->code, '201');
         self::assertGreaterThan($lower->ringEnd, $upper->ringStart);
     }
 

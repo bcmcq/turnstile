@@ -10,7 +10,7 @@ use Symfony\Component\Console\Attribute\Option;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Style\SymfonyStyle;
 
-#[AsCommand(name: 'turnstile:seed', description: 'Build the arena: venue, sections, ~100,000 seats and tickets, one event, three platforms')]
+#[AsCommand(name: 'turnstile:seed', description: 'Build the arena: venue, sections, seats and tickets, one event, three platforms')]
 final class SeedCommand
 {
     public function __construct(private readonly ArenaSeeder $seeder)
@@ -41,7 +41,7 @@ final class SeedCommand
         $start = hrtime(true);
         $result = $this->seeder->seed();
         $ms = (hrtime(true) - $start) / 1e6;
-        $io->success(\sprintf('%s seats in %d sections (%d upper rings) seeded in %.1fs', number_format($result['seats']), $result['sections'], $result['upperRings'], $ms / 1000));
+        $io->success(\sprintf('%s seats in %d sections seeded in %.1fs', number_format($result['seats']), $result['sections'], $ms / 1000));
 
         return Command::SUCCESS;
     }

@@ -12,7 +12,6 @@ const open = ref(false)
 const root = ref<HTMLElement | null>(null)
 
 const tiers: { tier: SectionTier; label: string }[] = [
-  { tier: 'floor', label: 'Floor' },
   { tier: 'lower', label: 'Lower bowl' },
   { tier: 'upper', label: 'Upper bowl' },
 ]
@@ -71,7 +70,7 @@ onBeforeUnmount(() => document.removeEventListener('mousedown', onDocumentClick)
             :title="`${s.code} · ${fmtInt(s.seatCount)} seats · ${s.status}`"
             @click="toggle(s)"
           >
-            {{ s.tier === 'floor' ? 'FLR' : s.code }}
+            {{ s.code }}
           </button>
         </div>
       </div>

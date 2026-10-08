@@ -13,7 +13,7 @@ use App\Domain\Venue\Venue;
 use Doctrine\DBAL\Connection;
 use Doctrine\ORM\EntityManagerInterface;
 
-/** Builds the whole arena. Small tables go through the ORM, the 100k seats and tickets through raw batched INSERTs. */
+/** Builds the whole arena. Small tables go through the ORM, seats and tickets through raw batched INSERTs. */
 final class ArenaSeeder
 {
     private const int BATCH = 5_000;
@@ -32,7 +32,7 @@ final class ArenaSeeder
         return is_numeric($count) && (int) $count > 0;
     }
 
-    /** @return array{seats: int, sections: int, upperRings: int} */
+    /** @return array{seats: int, sections: int} */
     public function seed(): array
     {
         $geometry = new ArenaGeometry();
@@ -101,7 +101,7 @@ final class ArenaSeeder
             $this->db->executeStatement('UPDATE sections SET seat_count = ? WHERE id = ?', [$count, $sectionId]);
         }
 
-        return ['seats' => $id, 'sections' => \count($sections), 'upperRings' => $geometry->upperRings];
+        return ['seats' => $id, 'sections' => \count($sections)];
     }
 
     public function truncate(): void

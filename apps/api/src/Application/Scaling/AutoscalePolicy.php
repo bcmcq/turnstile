@@ -11,19 +11,21 @@ use Psr\Log\LoggerInterface;
 
 /**
  * Queue-depth autoscaler, ticked by the publisher every few seconds when enabled.
- *   depth / workers > SCALE_UP_PER_WORKER      → +2 workers (max MAX)
- *   depth < SCALE_DOWN_DEPTH and per-worker < 25 → −1 worker (min MIN)
+ *   depth / workers > SCALE_UP_PER_WORKER      → +SCALE_UP_STEP workers (max MAX)
+ *   depth < SCALE_DOWN_DEPTH and per-worker < 25 → −SCALE_DOWN_STEP workers (min MIN)
  * Scale-up waits COOLDOWN_SECONDS for the new workers to show up; scale-down runs every tick so an idle
  * fleet drains to MIN quickly. Production would hand this to KEDA / an HPA on the same signal.
  */
 final class AutoscalePolicy
 {
     public const int MIN = 2;
-    public const int MAX = 16;
-    private const int SCALE_UP_PER_WORKER = 300;
+    public const int MAX = 24;
+    private const int SCALE_UP_PER_WORKER = 25;
+    private const int SCALE_UP_STEP = 4;
     private const int SCALE_DOWN_DEPTH = 200;
     private const int SCALE_DOWN_PER_WORKER = 25;
-    private const int COOLDOWN_SECONDS = 15;
+    private const int SCALE_DOWN_STEP = 2;
+    private const int COOLDOWN_SECONDS = 5;
     private const array STREAMS = ['turnstile_platform_tixhub', 'turnstile_platform_seatswap', 'turnstile_platform_passmarket', 'turnstile_platform_house'];
 
     public function __construct(
@@ -79,10 +81,10 @@ final class AutoscalePolicy
             if ($coolingDown) {
                 return null;
             }
-            $target = min(self::MAX, $workers + 2);
+            $target = min(self::MAX, $workers + self::SCALE_UP_STEP);
             $reason = \sprintf('%d queued ÷ %d workers = %d each > %d', $depth, $workers, $perWorker, self::SCALE_UP_PER_WORKER);
         } elseif ($depth < self::SCALE_DOWN_DEPTH && $perWorker < self::SCALE_DOWN_PER_WORKER && $workers > self::MIN) {
-            $target = max(self::MIN, $workers - 1);
+            $target = max(self::MIN, $workers - self::SCALE_DOWN_STEP);
             $reason = \sprintf('%d queued, %d each < %d', $depth, $perWorker, self::SCALE_DOWN_PER_WORKER);
         }
         if (null === $target) {

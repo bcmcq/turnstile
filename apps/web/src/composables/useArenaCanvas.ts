@@ -1,6 +1,6 @@
 import { onBeforeUnmount, onMounted, reactive, type Ref } from 'vue'
 import type { SectionView } from '@/api/types'
-import { COLORS, FLOOR, SEAT_SIZE, SeatPalette } from '@/lib/arenaPalette'
+import { COLORS, FLOOR, SEAT_SIZE, SeatPalette, fillSeat, seatPath } from '@/lib/arenaPalette'
 import type { SeatTable } from '@/lib/seatTable'
 
 export interface ArenaView {
@@ -30,7 +30,7 @@ export interface ArenaCanvasOptions {
 const MAX_ZOOM = 6
 
 /**
- * Two layers: a base canvas holding all 100k seats in device pixels (re-rendered only when the view
+ * Two layers: a base canvas holding every seat in device pixels (re-rendered only when the view
  * transform or a seat changes) and the visible canvas that composites base + floor labels + overlay.
  * A frame is only drawn when something asked for one.
  */
@@ -118,8 +118,13 @@ export function useArenaCanvas(opts: ArenaCanvasOptions) {
     ctx.roundRect(fx, fy, FLOOR.width * view.scale, FLOOR.height * view.scale, FLOOR.radius * view.scale)
     ctx.fill()
     ctx.stroke()
+    ctx.fillStyle = COLORS.dim
+    ctx.font = `500 ${Math.max(9, Math.min(14, 11 * Math.sqrt(view.scale / view.fitScale)))}px Inter, system-ui, sans-serif`
+    ctx.textAlign = 'center'
+    ctx.textBaseline = 'middle'
+    ctx.fillText('FLOOR', fx + (FLOOR.width * view.scale) / 2, fy + (FLOOR.height * view.scale) / 2)
 
-    // seats, batched by palette slot so fillStyle changes a handful of times, not 100k
+    // seats, batched by palette slot so fillStyle changes a handful of times
     const palette = opts.palette()
     const s = seatPx()
     const half = s / 2
@@ -128,10 +133,12 @@ export function useArenaCanvas(opts: ArenaCanvasOptions) {
     for (let i = 0; i < n; i++) slots[i] = palette.slot(seats.state[i], seats.platformId[i])
     for (let slot = 0; slot < palette.colors.length; slot++) {
       ctx.fillStyle = palette.colors[slot]
+      ctx.beginPath()
       for (let i = 0; i < n; i++) {
         if (slots[i] !== slot) continue
-        ctx.fillRect(seats.x[i] * view.scale + view.offsetX - half, seats.y[i] * view.scale + view.offsetY - half, s, s)
+        seatPath(ctx, seats.x[i] * view.scale + view.offsetX - half, seats.y[i] * view.scale + view.offsetY - half, s, s)
       }
+      ctx.fill()
     }
     baseDirty = false
     dirtySeats.clear()
@@ -150,7 +157,7 @@ export function useArenaCanvas(opts: ArenaCanvasOptions) {
       const py = seats.y[i] * view.scale + view.offsetY - half
       ctx.clearRect(px - 0.5, py - 0.5, s + 1, s + 1)
       ctx.fillStyle = palette.colors[palette.slot(seats.state[i], seats.platformId[i])]
-      ctx.fillRect(px, py, s, s)
+      fillSeat(ctx, px, py, s, s)
     }
     dirtySeats.clear()
   }
@@ -165,7 +172,7 @@ export function useArenaCanvas(opts: ArenaCanvasOptions) {
       if (sx < -20 || sy < -20 || sx > view.width + 20 || sy > view.height + 20) continue
       const closed = section.status === 'closed'
       ctx.fillStyle = closed ? COLORS.dim : COLORS.muted
-      ctx.fillText(section.tier === 'floor' ? 'FLOOR' : section.code, sx, sy)
+      ctx.fillText(section.code, sx, sy)
       if (closed) {
         const w = ctx.measureText(section.code).width
         ctx.strokeStyle = COLORS.dim

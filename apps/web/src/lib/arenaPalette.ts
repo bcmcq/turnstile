@@ -4,7 +4,19 @@ import type { PlatformView } from '@/api/types'
 /** Mirrors ArenaGeometry in the API: the floor rectangle the rings wrap around. */
 export const FLOOR = { width: 300, height: 140, radius: 12 } as const
 /** Seat dot edge in arena units (pitch is 2, so dots never touch). */
-export const SEAT_SIZE = 1.4
+export const SEAT_SIZE = 3.4
+export const SEAT_RADIUS_PX = 2
+
+/** Adds one seat (rounded square) to the current path; batch many per fill, a fill per seat is what makes frames drop. */
+export function seatPath(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number): void {
+  ctx.roundRect(x, y, w, h, Math.min(SEAT_RADIUS_PX, w / 2))
+}
+
+export function fillSeat(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number): void {
+  ctx.beginPath()
+  seatPath(ctx, x, y, w, h)
+  ctx.fill()
+}
 
 export const COLORS = {
   bg: '#0a0e13',

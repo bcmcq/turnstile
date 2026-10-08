@@ -8,7 +8,7 @@ use App\Domain\Ticket\TicketStatus;
 use Doctrine\DBAL\Connection;
 
 /**
- * Streams every ticket of the event as a compact JSON array of arrays. ~100k rows, so the body is
+ * Streams every ticket of the event as a compact JSON array of arrays. Built for ~100k rows, so the body is
  * assembled as a string rather than hydrated into PHP arrays, and Caddy gzips it on the way out.
  */
 final readonly class SeatsPayload

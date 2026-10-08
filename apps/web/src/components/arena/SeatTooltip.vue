@@ -57,7 +57,7 @@ function platformTone(code: string | undefined): ChipTone {
   return code === 'tixhub' ? 'cyan' : code === 'seatswap' ? 'violet' : code === 'passmarket' ? 'amber' : 'muted'
 }
 
-const sectionLabel = computed(() => (section.value?.tier === 'floor' ? 'Floor' : `Sec ${section.value?.code ?? '?'}`))
+const sectionLabel = computed(() => `Sec ${section.value?.code ?? '?'}`)
 const dotColor = computed(() => (state.value === TicketState.Listed ? (platform.value?.color ?? '#243040') : state.value === TicketState.Sold ? '#e6edf3' : state.value === TicketState.Closed ? '#151c26' : '#243040'))
 
 /** Keep the card inside the canvas: flip left/up near the edges. */

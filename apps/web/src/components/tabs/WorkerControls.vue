@@ -52,7 +52,7 @@ async function toggleAuto(on: boolean): Promise<void> {
       <span class="ml-1 text-[10px] text-muted">workers</span>
     </div>
     <span class="h-4 w-px bg-border" />
-    <Toggle :model-value="metrics.autoscale.enabled" label="Auto" title="Scale on queue depth: +2 above 300 jobs per worker (15 s cooldown), −1 every 5 s when idle, down to 2" @update:model-value="toggleAuto" />
+    <Toggle :model-value="metrics.autoscale.enabled" label="Auto" title="Scale on queue depth: +4 above 25 queued per worker (5 s cooldown), −2 every 5 s when idle, between 2 and 24" @update:model-value="toggleAuto" />
     <span class="min-w-0 flex-1 truncate text-[10px] text-muted" :title="metrics.autoscale.lastDecision ?? ''">{{ metrics.autoscale.lastDecision ?? '' }}</span>
   </div>
 </template>

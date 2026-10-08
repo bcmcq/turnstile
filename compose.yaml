@@ -8,14 +8,14 @@ x-api-image: &api-image
   environment: &api-env
     APP_ENV: dev
     APP_SECRET: turnstile-dev-secret
-    DATABASE_URL: mysql://${MYSQL_USER}:${MYSQL_PASSWORD}@mysql:3306/${MYSQL_DATABASE}?serverVersion=8.4&charset=utf8mb4
+    DATABASE_URL: mysql://${MYSQL_USER:-turnstile}:${MYSQL_PASSWORD:-turnstile}@mysql:3306/${MYSQL_DATABASE:-turnstile}?serverVersion=8.4&charset=utf8mb4
     REDIS_URL: redis://redis:6379
     LOCK_DSN: redis://redis:6379
     MERCURE_URL: http://api:8080/.well-known/mercure
     MERCURE_PUBLIC_URL: http://localhost:8080/.well-known/mercure
-    MERCURE_JWT_SECRET: ${MERCURE_PUBLISHER_JWT_KEY}
-    MERCURE_PUBLISHER_JWT_KEY: ${MERCURE_PUBLISHER_JWT_KEY}
-    MERCURE_SUBSCRIBER_JWT_KEY: ${MERCURE_SUBSCRIBER_JWT_KEY}
+    MERCURE_JWT_SECRET: ${MERCURE_PUBLISHER_JWT_KEY:-turnstile-publisher-demo-key-change-me-0123456789}
+    MERCURE_PUBLISHER_JWT_KEY: ${MERCURE_PUBLISHER_JWT_KEY:-turnstile-publisher-demo-key-change-me-0123456789}
+    MERCURE_SUBSCRIBER_JWT_KEY: ${MERCURE_SUBSCRIBER_JWT_KEY:-turnstile-subscriber-demo-key-change-me-0123456789}
     MOCKS_BASE_URL: http://mocks:8090
     SCALER_URL: http://scaler:8070
   depends_on:
@@ -28,15 +28,15 @@ services:
   mysql:
     image: mysql:8.4
     environment:
-      MYSQL_DATABASE: ${MYSQL_DATABASE}
-      MYSQL_USER: ${MYSQL_USER}
-      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-turnstile}
+      MYSQL_USER: ${MYSQL_USER:-turnstile}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-turnstile}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root}
     command: --innodb-buffer-pool-size=512M --max-connections=300
     volumes:
       - mysql-data:/var/lib/mysql
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD}"]
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD:-root}"]
       interval: 3s
       timeout: 3s
       retries: 30
@@ -73,7 +73,7 @@ services:
     healthcheck:
       disable: true   # inherited FrankenPHP check probes Caddy, which workers do not run
     stop_grace_period: 15s
-    scale: ${WORKER_SCALE}
+    scale: ${WORKER_SCALE:-2}
     depends_on:
       api:
         condition: service_healthy
