@@ -1,29 +1,6 @@
 framework:
-    # Client-side pacing at 80% of each marketplace's 3,000 rpm: 40 tokens/s with a 200-token burst. The refill
-    # interval must be short: Symfony's bucket refills in whole cycles, so a 1-minute interval would make an empty
-    # bucket wait a full minute for a single token. State lives in
-    # the Redis cache pool, so every worker shares one bucket: adding workers raises throughput only until
-    # the bucket is the ceiling, which is the point the video makes. No lock: a worker killed while holding
-    # it would stall the others until the lock TTL; the rare double-consume costs one token.
-    rate_limiter:
-        platform_tixhub:
-            policy: token_bucket
-            limit: 200
-            rate: { interval: '1 second', amount: 40 }
-            cache_pool: cache.rate_limiter
-            lock_factory: null
-        platform_seatswap:
-            policy: token_bucket
-            limit: 200
-            rate: { interval: '1 second', amount: 40 }
-            cache_pool: cache.rate_limiter
-            lock_factory: null
-        platform_passmarket:
-            policy: token_bucket
-            limit: 200
-            rate: { interval: '1 second', amount: 40 }
-            cache_pool: cache.rate_limiter
-            lock_factory: null
+    # The per-platform token buckets are built at runtime by ClientRateLimiter (sized from each vendor's
+    # current limit); only the shared Redis pool lives here so every worker sees one bucket per platform.
     cache:
         pools:
             cache.rate_limiter:

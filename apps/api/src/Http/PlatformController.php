@@ -7,6 +7,8 @@ namespace App\Http;
 use App\Application\Platform\ClientRateLimiter;
 use App\Application\Platform\Dto\BuyersInput;
 use App\Application\Platform\Dto\ChaosInput;
+use App\Application\Platform\Dto\PacingInput;
+use App\Application\Platform\Dto\RateLimitInput;
 use App\Application\Platform\PlatformRepository;
 use App\Application\Platform\PlatformRow;
 use App\Domain\Platform\PlatformCode;
@@ -47,6 +49,26 @@ final class PlatformController
         }
 
         return new JsonResponse(['buyerRate' => $input->buyerRate, 'platforms' => array_map(static fn (PlatformCode $c): string => $c->value, $this->codes($code))]);
+    }
+
+    /** Vendor limit slider. The mocks enforce the new limit at once; client pacing follows it unless pacing is pinned. */
+    #[Route('/{code}/rate-limit', name: 'api_platforms_rate_limit', methods: ['PUT'])]
+    public function rateLimit(string $code, #[MapRequestPayload(acceptFormat: 'json')] RateLimitInput $input): JsonResponse
+    {
+        foreach ($this->codes($code) as $c) {
+            $this->platforms->setRateLimit($c, $input->rpm);
+        }
+
+        return new JsonResponse(['rpm' => $input->rpm, 'platforms' => array_map(static fn (PlatformCode $c): string => $c->value, $this->codes($code))]);
+    }
+
+    /** Whether workers pace to the vendor limit (no 429s) or stay at the default and let 429s drive backoff. */
+    #[Route('/pacing', name: 'api_platforms_pacing', methods: ['PUT'])]
+    public function pacing(#[MapRequestPayload(acceptFormat: 'json')] PacingInput $input): JsonResponse
+    {
+        $this->limiter->setFollowsVendorLimit($input->follow);
+
+        return new JsonResponse(['follow' => $input->follow]);
     }
 
     /** @return list<PlatformCode> */

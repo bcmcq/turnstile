@@ -25,7 +25,25 @@ export const usePlatformsStore = defineStore('platforms', () => {
     }
   }
 
-  return { saving, setChaos, setBuyers }
+  async function setRateLimit(rpm: number, platform: PlatformCode | 'all' = 'all'): Promise<void> {
+    saving.value = true
+    try {
+      await api.setRateLimit(platform, rpm)
+    } finally {
+      saving.value = false
+    }
+  }
+
+  async function setPacing(follow: boolean): Promise<void> {
+    saving.value = true
+    try {
+      await api.setPacing(follow)
+    } finally {
+      saving.value = false
+    }
+  }
+
+  return { saving, setChaos, setBuyers, setRateLimit, setPacing }
 })
 
 if (import.meta.hot) import.meta.hot.accept(acceptHMRUpdate(usePlatformsStore, import.meta.hot))

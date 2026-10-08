@@ -11,6 +11,9 @@ const fraction = computed(() => (props.gauge.capacity ? props.gauge.remainingTok
 const saturated = computed(() => fraction.value <= 0.05)
 const pacing = computed(() => fraction.value < 0.25 && !saturated.value)
 const barColor = computed(() => (saturated.value ? '#f87171' : props.gauge.color))
+/** Vendor limit in requests per second; the bar is the client bucket, the numbers read in the vendor's units. */
+const perSec = computed(() => Math.max(1, Math.round(props.gauge.rateLimitPerMin / 60)))
+const availablePerSec = computed(() => Math.round(fraction.value * perSec.value))
 const refillSeconds = computed(() => ((props.gauge.capacity - props.gauge.remainingTokens) / Math.max(1, props.gauge.tokensPerSec)).toFixed(1))
 const note = computed(() => {
   if (saturated.value) return `${props.gauge.name} bucket empty · refills ${props.gauge.tokensPerSec}/s · workers wait, no 429s sent`
@@ -28,8 +31,8 @@ const note = computed(() => {
         <div class="h-full rounded-full transition-[width] duration-300" :style="{ width: `${fraction * 100}%`, background: barColor }" />
         <span class="absolute top-0 h-full w-px bg-fg/40" :style="{ left: '80%' }" title="80% pacing threshold" />
       </div>
-      <span class="w-[72px] text-right font-medium tabular-nums" :class="saturated ? 'text-fail' : 'text-fg'">{{ fmtInt(gauge.remainingTokens) }} / {{ gauge.capacity }}</span>
-      <span class="w-[56px] text-right font-medium tabular-nums" :class="gauge.http429 > 0 ? 'text-passmarket' : 'text-muted'">{{ fmtInt(gauge.http429) }} ×429</span>
+      <span class="w-[66px] text-right font-medium tabular-nums" :class="saturated ? 'text-fail' : 'text-fg'">{{ availablePerSec }} / {{ perSec }}/s</span>
+      <span class="w-[64px] shrink-0 text-right font-medium tabular-nums whitespace-nowrap" :class="gauge.http429 > 0 ? 'text-passmarket' : 'text-muted'">{{ fmtInt(gauge.http429) }} ×429</span>
     </div>
     <p v-if="note" class="pl-4 text-[10px]" :class="saturated ? 'text-fail' : 'text-passmarket'">{{ note }}</p>
   </div>

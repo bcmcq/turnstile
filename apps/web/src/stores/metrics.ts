@@ -16,12 +16,14 @@ export const useMetricsStore = defineStore('metrics', () => {
   const autoscale = computed(() => snapshot.value?.autoscale ?? { enabled: false, min: 1, max: 16, lastDecision: null })
   const chaosRate = computed(() => Math.max(0, ...platforms.value.map((p) => p.failureRate)))
   const buyersOn = computed(() => platforms.value.some((p) => p.buyerRate > 0))
+  const vendorRpm = computed(() => Math.min(...platforms.value.map((p) => p.rateLimitPerMin), 3000))
+  const paceToVendorLimit = computed(() => snapshot.value?.paceToVendorLimit ?? true)
 
   function set(next: MetricsSnapshot): void {
     snapshot.value = next
   }
 
-  return { snapshot, jobsPerSec, eventsPerSec, counts, workers, platforms, series, autoscale, chaosRate, buyersOn, set }
+  return { snapshot, jobsPerSec, eventsPerSec, counts, workers, platforms, series, autoscale, chaosRate, buyersOn, vendorRpm, paceToVendorLimit, set }
 })
 
 if (import.meta.hot) import.meta.hot.accept(acceptHMRUpdate(useMetricsStore, import.meta.hot))

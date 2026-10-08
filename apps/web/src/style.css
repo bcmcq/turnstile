@@ -27,3 +27,35 @@ button, [role="button"], [role="switch"], select, summary, input[type="range"] {
 button:disabled, [role="switch"]:disabled { cursor: not-allowed; }
 /* Baseline hover for every enabled control; components add their own color changes on top. */
 button:not(:disabled):hover, [role="switch"]:not(:disabled):hover, select:hover { filter: brightness(1.2); }
+
+/* Range sliders (chaos, vendor limit): --pct is the filled fraction, --c the accent. */
+.range-slider {
+  appearance: none;
+  background: transparent;
+}
+.range-slider::-webkit-slider-runnable-track {
+  height: 4px;
+  border-radius: 2px;
+  background: linear-gradient(to right, var(--c) var(--pct), #2a3644 var(--pct));
+}
+.range-slider::-webkit-slider-thumb {
+  appearance: none;
+  margin-top: -5px;
+  width: 14px;
+  height: 14px;
+  border-radius: 999px;
+  background: #e6edf3;
+  border: 2px solid var(--c);
+}
+.range-slider::-moz-range-track {
+  height: 4px;
+  border-radius: 2px;
+  background: linear-gradient(to right, var(--c) var(--pct), #2a3644 var(--pct));
+}
+.range-slider::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border-radius: 999px;
+  background: #e6edf3;
+  border: 2px solid var(--c);
+}

@@ -170,6 +170,8 @@ export interface MetricsSnapshot {
   platforms: PlatformGauge[]
   workers: WorkerView[]
   autoscale: AutoscaleState
+  /** false = workers keep pacing to the default limit and the vendor's 429s drive backoff */
+  paceToVendorLimit: boolean
 }
 
 export interface LogEvent {

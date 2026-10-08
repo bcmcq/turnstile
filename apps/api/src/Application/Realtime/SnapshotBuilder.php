@@ -46,8 +46,8 @@ final class SnapshotBuilder
                 name: $p->code->displayName(),
                 color: $p->code->color(),
                 remainingTokens: max(0, $this->limiter->remaining($p->code)),
-                capacity: ClientRateLimiter::CAPACITY,
-                tokensPerSec: ClientRateLimiter::TOKENS_PER_SECOND,
+                capacity: $this->limiter->capacity($p->code),
+                tokensPerSec: $this->limiter->tokensPerSec($p->code),
                 rateLimitPerMin: $p->rateLimitPerMin,
                 calls: $s['calls'],
                 ok: $s['ok'],
@@ -71,6 +71,7 @@ final class SnapshotBuilder
             platforms: $gauges,
             workers: $this->workers->all(),
             autoscale: $this->autoscale->state(),
+            paceToVendorLimit: $this->limiter->followsVendorLimit(),
         );
     }
 }

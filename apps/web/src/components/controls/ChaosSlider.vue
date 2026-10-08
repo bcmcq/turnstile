@@ -27,43 +27,10 @@ watch(() => props.modelValue, (v) => (local.value = v))
       step="0.05"
       :value="local"
       :disabled="props.disabled"
-      class="chaos h-4 w-full cursor-pointer"
+      class="range-slider h-4 w-full"
       :style="{ '--pct': `${local * 100}%`, '--c': local > 0.3 ? '#f87171' : '#fb923c' }"
       @input="local = Number(($event.target as HTMLInputElement).value)"
       @change="emit('commit', Number(($event.target as HTMLInputElement).value))"
     />
   </div>
 </template>
-
-<style scoped>
-.chaos {
-  appearance: none;
-  background: transparent;
-}
-.chaos::-webkit-slider-runnable-track {
-  height: 4px;
-  border-radius: 2px;
-  background: linear-gradient(to right, var(--c) var(--pct), #2a3644 var(--pct));
-}
-.chaos::-webkit-slider-thumb {
-  appearance: none;
-  margin-top: -5px;
-  width: 14px;
-  height: 14px;
-  border-radius: 999px;
-  background: #e6edf3;
-  border: 2px solid var(--c);
-}
-.chaos::-moz-range-track {
-  height: 4px;
-  border-radius: 2px;
-  background: linear-gradient(to right, var(--c) var(--pct), #2a3644 var(--pct));
-}
-.chaos::-moz-range-thumb {
-  width: 14px;
-  height: 14px;
-  border-radius: 999px;
-  background: #e6edf3;
-  border: 2px solid var(--c);
-}
-</style>

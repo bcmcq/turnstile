@@ -26,6 +26,7 @@ final readonly class MetricsSnapshot
         public array $platforms,
         public array $workers,
         public AutoscaleState $autoscale,
+        public bool $paceToVendorLimit,
     ) {
     }
 }

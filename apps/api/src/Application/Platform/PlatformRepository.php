@@ -59,6 +59,14 @@ final class PlatformRepository
     }
 
     /** Push DB values to Redis (on boot, so the mocks see the seeded defaults). */
+    /** Vendor limit slider: the mocks enforce it from Redis within a request; workers re-read rows every few seconds. */
+    public function setRateLimit(PlatformCode $code, int $rpm): void
+    {
+        $this->db->executeStatement('UPDATE platforms SET rate_limit_per_min = ?, updated_at = NOW() WHERE code = ?', [$rpm, $code->value]);
+        $this->redis->get()->set("ratelimit:{$code->value}:limit", (string) $rpm);
+        $this->rows = null;
+    }
+
     public function syncToRedis(): void
     {
         $redis = $this->redis->get();
