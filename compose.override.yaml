@@ -10,6 +10,11 @@ services:
       - ./apps/api:/app
       - api-vendor:/app/vendor
       - api-var:/app/var
+  publisher:
+    volumes:
+      - ./apps/api:/app
+      - api-vendor:/app/vendor
+      - api-var:/app/var
 
 volumes:
   api-vendor:

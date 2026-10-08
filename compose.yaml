@@ -75,5 +75,17 @@ services:
       api:
         condition: service_healthy
 
+  publisher:
+    <<: *api-image
+    environment:
+      <<: *api-env
+      TURNSTILE_ROLE: publisher
+    command: ["php", "bin/console", "turnstile:publish", "-vv"]
+    healthcheck:
+      disable: true
+    depends_on:
+      api:
+        condition: service_healthy
+
 volumes:
   mysql-data:
