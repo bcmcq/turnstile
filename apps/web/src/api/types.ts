@@ -71,8 +71,15 @@ export interface SeatsPayload {
 /** [ticketId, sectionId, state, platformId, priceCents] */
 export type SeatUpdate = [number, number, TicketStateCode, number, number]
 
+/** Per-seat job lifecycle carried on the seats topic (last per ticket per tick); mirrors Publisher::JOB_STATE. */
+export const JobState = { Started: 1, RetryWait: 2, Conflict: 3, DeadLettered: 4, Completed: 5, Skipped: 6, Requeued: 7 } as const
+export type JobStateCode = (typeof JobState)[keyof typeof JobState]
+/** [ticketId, jobState, delayMs] */
+export type JobStateUpdate = [number, JobStateCode, number]
+
 export interface SeatsBatch {
   rows: SeatUpdate[]
+  jobs: JobStateUpdate[]
 }
 
 export interface RunCounters {
@@ -146,6 +153,13 @@ export interface PlatformGauge {
 
 export type SeriesName = 'jobsPerSec' | 'eventsPerSec' | 'queued' | 'inFlight' | 'failed'
 
+export interface AutoscaleState {
+  enabled: boolean
+  min: number
+  max: number
+  lastDecision: string | null
+}
+
 export interface MetricsSnapshot {
   ts: number
   run: RunView | null
@@ -155,7 +169,7 @@ export interface MetricsSnapshot {
   series: Partial<Record<SeriesName, number[]>>
   platforms: PlatformGauge[]
   workers: WorkerView[]
-  autoscale: { enabled: boolean; min: number; max: number; lastDecision: string | null }
+  autoscale: AutoscaleState
 }
 
 export interface LogEvent {
@@ -230,5 +244,5 @@ export interface ScaleResult {
 export interface WorkersStatus {
   workers: WorkerView[]
   queueDepth: number
-  autoscale: { enabled: boolean; min: number; max: number }
+  autoscale: AutoscaleState
 }

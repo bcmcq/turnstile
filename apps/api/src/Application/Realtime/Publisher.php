@@ -25,6 +25,8 @@ final class Publisher
     private const int MAX_EVENTS_PER_TICK = 5_000;
     private const int MAX_LOG_PER_TICK = 100;
     private const array RUN_EVENTS = ['run.created', 'run.dispatching', 'run.started', 'run.paused', 'run.resumed', 'run.cancelled', 'run.finished', 'demo.reset'];
+    /** Per-seat job state codes carried on the seats topic; last one per ticket in a tick wins. Mirrors JobState in the web app. */
+    private const array JOB_STATE = ['job.started' => 1, 'job.retry' => 2, 'job.dead_lettered' => 4, 'job.completed' => 5, 'job.skipped' => 6, 'job.requeued' => 7];
 
     private bool $running = true;
 
@@ -62,13 +64,21 @@ final class Publisher
             $eventsThisSecond += \count($events);
 
             $seats = [];
+            $jobs = [];
             $log = [];
             $runChanged = false;
             foreach ($events as $e) {
+                $p = $e->payload;
                 if ('ticket.updated' === $e->type) {
-                    $p = $e->payload;
                     $seats[(int) ($p['ticketId'] ?? 0)] = [(int) ($p['ticketId'] ?? 0), (int) ($p['sectionId'] ?? 0), (int) ($p['state'] ?? 0), (int) ($p['platformId'] ?? 0), (int) ($p['priceCents'] ?? 0)];
                     continue;
+                }
+                if (isset(self::JOB_STATE[$e->type]) && isset($p['ticketId'])) {
+                    $code = self::JOB_STATE[$e->type];
+                    if ('job.retry' === $e->type && 'lock_conflict' === ($p['outcome'] ?? null)) {
+                        $code = 3;
+                    }
+                    $jobs[(int) $p['ticketId']] = [(int) $p['ticketId'], $code, (int) ($p['delayMs'] ?? 0)];
                 }
                 if ('job.completed' === $e->type) {
                     ++$completedThisSecond;
@@ -76,13 +86,14 @@ final class Publisher
                 if (\in_array($e->type, self::RUN_EVENTS, true)) {
                     $runChanged = true;
                 }
-                if (\count($log) < self::MAX_LOG_PER_TICK) {
-                    $log[] = ['type' => $e->type, 'ts' => $e->ts] + $e->payload;
+                // Seat state travels on the seats topic, so the log can be sampled; run and system events always make it.
+                if (!str_starts_with($e->type, 'job.') || \count($log) < self::MAX_LOG_PER_TICK) {
+                    $log[] = ['type' => $e->type, 'ts' => $e->ts] + $p;
                 }
             }
 
-            if ([] !== $seats) {
-                $this->publish(Topics::SEATS, ['rows' => array_values($seats)]);
+            if ([] !== $seats || [] !== $jobs) {
+                $this->publish(Topics::SEATS, ['rows' => array_values($seats), 'jobs' => array_values($jobs)]);
             }
             if ([] !== $log) {
                 $this->publish(Topics::LOG, ['events' => $log]);

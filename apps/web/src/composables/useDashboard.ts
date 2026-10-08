@@ -22,7 +22,7 @@ export function useDashboard() {
       metrics.set(s)
       if (s.run) run.set(s.run)
     },
-    seats: (b) => liveBus.emit('seats', b.rows),
+    seats: (b) => liveBus.emit('seats', b),
     log: (b) => {
       log.push(b.events)
       liveBus.emit('log', b.events)
