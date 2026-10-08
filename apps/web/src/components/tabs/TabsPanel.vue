@@ -1,12 +1,12 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { api } from '@/api/client'
+import EventsTab from '@/components/tabs/EventsTab.vue'
 import FailedTab from '@/components/tabs/FailedTab.vue'
 import WorkersTab from '@/components/tabs/WorkersTab.vue'
 import Button from '@/components/ui/Button.vue'
 import Panel from '@/components/ui/Panel.vue'
 import { fmtInt } from '@/lib/format'
-import { useLogStore } from '@/stores/log'
 import { useMetricsStore } from '@/stores/metrics'
 import { useRunStore } from '@/stores/run'
 import { useToastsStore } from '@/stores/toasts'
@@ -15,7 +15,6 @@ type Tab = 'workers' | 'failed' | 'events'
 
 const metrics = useMetricsStore()
 const run = useRunStore()
-const log = useLogStore()
 const toasts = useToastsStore()
 const active = ref<Tab>('workers')
 const failedTab = ref<InstanceType<typeof FailedTab> | null>(null)
@@ -52,7 +51,7 @@ async function retryAll(): Promise<void> {
           v-for="t in tabs"
           :key="t.id"
           type="button"
-          class="flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs"
+          class="flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs focus:outline-none focus-visible:ring-2 focus-visible:ring-tixhub/60"
           :class="active === t.id ? 'bg-panel-2 font-semibold text-fg' : 'font-medium text-muted hover:text-fg'"
           @click="active = t.id"
         >
@@ -65,6 +64,6 @@ async function retryAll(): Promise<void> {
     </template>
     <WorkersTab v-if="active === 'workers'" />
     <FailedTab v-else-if="active === 'failed'" ref="failedTab" />
-    <div v-else class="text-[11px] text-muted">Events tab · subtask 4.8 · {{ fmtInt(log.total) }} events received</div>
+    <EventsTab v-else />
   </Panel>
 </template>

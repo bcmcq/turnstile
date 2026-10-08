@@ -47,7 +47,7 @@ onBeforeUnmount(() => document.removeEventListener('mousedown', onDocumentClick)
     <button
       type="button"
       :disabled="props.disabled"
-      class="flex w-full items-center justify-between rounded-lg border border-border bg-panel-2 px-3 py-2 text-left text-[13px] font-medium disabled:cursor-not-allowed disabled:opacity-50"
+      class="flex w-full items-center justify-between rounded-lg border border-border bg-panel-2 px-3 py-2 text-left text-[13px] font-medium focus:outline-none focus-visible:ring-2 focus-visible:ring-tixhub/60 disabled:cursor-not-allowed disabled:opacity-50"
       :class="open ? 'border-tixhub/60' : ''"
       @click="open = !open"
     >
@@ -66,7 +66,7 @@ onBeforeUnmount(() => document.removeEventListener('mousedown', onDocumentClick)
             v-for="s in group.sections"
             :key="s.id"
             type="button"
-            class="rounded-md border px-1 py-1 text-[11px] font-medium tabular-nums"
+            class="rounded-md border px-1 py-1 text-[11px] font-medium tabular-nums focus:outline-none focus-visible:ring-2 focus-visible:ring-tixhub/60"
             :class="arena.selectedSections.has(s.id) ? 'border-tixhub/60 bg-tixhub/15 text-tixhub' : s.status === 'closed' ? 'border-border text-dim line-through' : 'border-border bg-panel-2 text-fg hover:border-muted'"
             :title="`${s.code} · ${fmtInt(s.seatCount)} seats · ${s.status}`"
             @click="toggle(s)"
