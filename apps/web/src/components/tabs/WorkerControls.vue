@@ -48,11 +48,11 @@ async function toggleAuto(on: boolean): Promise<void> {
     <div class="flex items-center gap-1">
       <button type="button" class="size-6 rounded border border-border text-sm leading-none hover:bg-border/60 focus:outline-none focus-visible:ring-2 focus-visible:ring-tixhub/60 disabled:opacity-40" :disabled="busy || metrics.autoscale.enabled || shown <= 1" title="Stop one worker" @click="scale(-1)">−</button>
       <span class="w-8 text-center text-xs font-semibold tabular-nums" :class="pending !== null ? 'text-passmarket' : ''">{{ shown }}</span>
-      <button type="button" class="size-6 rounded border border-border text-sm leading-none hover:bg-border/60 focus:outline-none focus-visible:ring-2 focus-visible:ring-tixhub/60 disabled:opacity-40" :disabled="busy || metrics.autoscale.enabled || shown >= 24" title="Start one more worker container" @click="scale(1)">+</button>
+      <button type="button" class="size-6 rounded border border-border text-sm leading-none hover:bg-border/60 focus:outline-none focus-visible:ring-2 focus-visible:ring-tixhub/60 disabled:opacity-40" :disabled="busy || metrics.autoscale.enabled || shown >= max" title="Start one more worker container" @click="scale(1)">+</button>
       <span class="ml-1 text-[10px] text-muted">workers</span>
     </div>
     <span class="h-4 w-px bg-border" />
-    <Toggle :model-value="metrics.autoscale.enabled" label="Auto" title="Scale on queue depth: +4 above 25 queued per worker (5 s cooldown), −2 every 5 s when idle, between 2 and 24" @update:model-value="toggleAuto" />
+    <Toggle :model-value="metrics.autoscale.enabled" label="Auto" :title="`Scale on queue depth: +4 above 25 queued per worker (5 s cooldown), −2 every 5 s when idle, between ${min} and ${max}`" @update:model-value="toggleAuto" />
     <span class="min-w-0 flex-1 truncate text-[10px] text-muted" :title="metrics.autoscale.lastDecision ?? ''">{{ metrics.autoscale.lastDecision ?? '' }}</span>
   </div>
 </template>

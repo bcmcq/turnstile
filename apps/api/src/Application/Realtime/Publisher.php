@@ -24,6 +24,7 @@ final class Publisher
     private const int TICK_MS = 250;
     private const int MAX_EVENTS_PER_TICK = 5_000;
     private const int MAX_LOG_PER_TICK = 100;
+    private const int SLOW_TICK_MS = 600;
     private const array RUN_EVENTS = ['run.created', 'run.dispatching', 'run.started', 'run.paused', 'run.resumed', 'run.cancelled', 'run.finished', 'demo.reset'];
     /** Per-seat job state codes carried on the seats topic; last one per ticket in a tick wins. Mirrors JobState in the web app. */
     private const array JOB_STATE = ['job.started' => 1, 'job.retry' => 2, 'job.dead_lettered' => 4, 'job.completed' => 5, 'job.skipped' => 6, 'job.requeued' => 7];
@@ -129,16 +130,23 @@ final class Publisher
                 $lastMetricsAt = $now;
             }
 
+            $autoscaleMs = 0;
             if ($now - $lastAutoscaleAt >= 5.0) {
                 $lastAutoscaleAt = $now;
+                $t = microtime(true);
                 try {
                     $this->autoscale->tick();
                 } catch (\Throwable $e) {
                     $this->logger->error('autoscale tick failed: {error}', ['error' => $e->getMessage()]);
                 }
+                $autoscaleMs = (int) ((microtime(true) - $t) * 1000);
             }
 
             $elapsedMs = (int) ((microtime(true) - $tickStart) * 1000);
+            if ($elapsedMs > self::SLOW_TICK_MS) {
+                // A slow tick is invisible on the dashboard except as a stutter; say where the time went.
+                $this->logger->warning('slow publisher tick: {ms} ms ({events} events, autoscale {autoscale} ms)', ['ms' => $elapsedMs, 'events' => \count($events), 'autoscale' => $autoscaleMs]);
+            }
             if ($elapsedMs < self::TICK_MS) {
                 usleep((self::TICK_MS - $elapsedMs) * 1000);
             }
