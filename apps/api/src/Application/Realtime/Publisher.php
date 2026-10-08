@@ -125,7 +125,8 @@ final class Publisher
     private function publish(string $topic, mixed $data): void
     {
         try {
-            $this->hub->publish(new Update($topic, json_encode($data, \JSON_THROW_ON_ERROR)));
+            // SSE "event:" name = topic suffix, so the browser routes with addEventListener('metrics', …).
+            $this->hub->publish(new Update($topic, json_encode($data, \JSON_THROW_ON_ERROR), type: substr($topic, \strlen('turnstile/'))));
         } catch (\Throwable $e) {
             $this->logger->error('mercure publish to {topic} failed: {error}', ['topic' => $topic, 'error' => $e->getMessage()]);
         }

@@ -1,33 +1,29 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import ArenaPanel from '@/components/arena/ArenaPanel.vue'
+import ControlsBar from '@/components/controls/ControlsBar.vue'
+import HeaderBar from '@/components/layout/HeaderBar.vue'
+import MetricsTiles from '@/components/metrics/MetricsTiles.vue'
+import PlatformsPanel from '@/components/platforms/PlatformsPanel.vue'
+import TabsPanel from '@/components/tabs/TabsPanel.vue'
+import { useDashboard } from '@/composables/useDashboard'
 
-// Phase 0 smoke screen. Confirms Vite, Tailwind, API and Mercure are reachable.
-const api = ref<string>('…')
-const mercure = ref<string>('…')
-
-onMounted(async () => {
-  try {
-    const r = await fetch(`${import.meta.env.VITE_API_URL}/api/health`)
-    api.value = r.ok ? 'ok' : `http ${r.status}`
-  } catch {
-    api.value = 'unreachable'
-  }
-  const es = new EventSource(`${import.meta.env.VITE_MERCURE_URL}?topic=turnstile/health`)
-  es.onopen = () => (mercure.value = 'connected')
-  es.onerror = () => (mercure.value = 'error')
-})
+const { ready, error, connected } = useDashboard()
 </script>
 
 <template>
-  <main class="min-h-full p-5">
-    <header class="flex items-center gap-3">
-      <span class="grid size-7 place-items-center rounded-md bg-tixhub font-bold text-bg">T</span>
-      <span class="text-sm font-bold tracking-[0.12em]">TURNSTILE</span>
-      <span class="text-xs text-muted">Bulk ticket sync</span>
-    </header>
-    <section class="mt-6 grid max-w-sm gap-2 rounded-xl border border-border bg-panel p-4 text-sm">
-      <div class="flex justify-between"><span class="text-muted">API</span><span>{{ api }}</span></div>
-      <div class="flex justify-between"><span class="text-muted">Mercure</span><span>{{ mercure }}</span></div>
-    </section>
-  </main>
+  <div class="flex h-full min-h-0 flex-col gap-4 p-5">
+    <HeaderBar :connected="connected" />
+    <p v-if="error" class="rounded-lg border border-fail/40 bg-fail/10 px-3 py-2 text-xs text-fail">API unreachable: {{ error }}</p>
+    <main v-if="ready" class="grid min-h-0 flex-1 grid-cols-[1fr_380px] gap-4">
+      <div class="flex min-h-0 flex-col gap-4">
+        <ArenaPanel />
+        <ControlsBar />
+      </div>
+      <aside class="flex min-h-0 flex-col gap-3">
+        <MetricsTiles />
+        <PlatformsPanel />
+        <TabsPanel />
+      </aside>
+    </main>
+  </div>
 </template>
