@@ -5,8 +5,10 @@ declare(strict_types=1);
 namespace App\Tests\Application\Arena;
 
 use App\Application\Arena\ArenaGeometry;
+use App\Domain\Venue\ArenaSize;
 use App\Domain\Venue\SectionTier;
 use PHPUnit\Framework\Attributes\CoversClass;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
 #[CoversClass(ArenaGeometry::class)]
@@ -23,9 +25,19 @@ final class ArenaGeometryTest extends TestCase
         self::assertSame('216', $arena->sections[31]->code);
     }
 
-    public function testEverySeatIsInsideTheCanvasAndOutsideTheFloor(): void
+    public function testFullSizeIsAFiftyThousandSeatCrowd(): void
     {
-        $arena = new ArenaGeometry();
+        $arena = ArenaGeometry::for(ArenaSize::Full);
+
+        self::assertGreaterThan(45_000, \count($arena->seats));
+        self::assertLessThan(55_000, \count($arena->seats));
+        self::assertCount(32, $arena->sections);
+    }
+
+    #[DataProvider('sizes')]
+    public function testEverySeatIsInsideTheCanvasAndOutsideTheFloor(ArenaSize $size): void
+    {
+        $arena = ArenaGeometry::for($size);
         $cx = ArenaGeometry::WIDTH / 2;
         $cy = ArenaGeometry::HEIGHT / 2;
 
@@ -61,6 +73,14 @@ final class ArenaGeometryTest extends TestCase
         self::assertSame($lower->code, '101');
         self::assertSame($upper->code, '201');
         self::assertGreaterThan($lower->ringEnd, $upper->ringStart);
+    }
+
+    /** @return iterable<string, array{ArenaSize}> */
+    public static function sizes(): iterable
+    {
+        foreach (ArenaSize::cases() as $size) {
+            yield $size->value => [$size];
+        }
     }
 
     public function testRowLabels(): void

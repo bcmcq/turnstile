@@ -51,6 +51,7 @@ export interface ArenaBootstrap {
   eventName: string
   arenaWidth: number
   arenaHeight: number
+  seatPitch: number
   seatCount: number
   sections: SectionView[]
   platforms: PlatformView[]

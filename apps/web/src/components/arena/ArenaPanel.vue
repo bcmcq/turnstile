@@ -22,7 +22,10 @@ const run = useRunStore()
     </template>
     <ArenaCanvas />
     <footer class="mt-2 flex items-center justify-between text-[11px]">
-      <span class="text-muted">Selected: {{ arena.selectionSummary }}<template v-if="arena.selectedSeatTotal"> · {{ fmtInt(arena.selectedSeatTotal) }} tickets</template></span>
+      <span class="text-muted">
+        Selected: {{ arena.selectionSummary }}<template v-if="arena.selectedSeatTotal"> · {{ fmtInt(arena.selectedSeatTotal) }} tickets</template>
+        <button v-if="arena.selectedSections.size || arena.selectedTickets.size" type="button" class="ml-3 hover:text-fg" @click="arena.clearSelection()">Clear</button>
+      </span>
       <span v-if="run.current" class="font-medium tabular-nums">{{ fmtInt(run.current.counters.completed) }} moved · {{ fmtInt(run.current.counters.in_flight) }} in flight · {{ fmtInt(run.current.counters.dead_lettered) }} failed</span>
     </footer>
   </Panel>

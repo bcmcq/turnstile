@@ -10,6 +10,7 @@ use App\Application\Arena\Dto\SectionView;
 use App\Application\Run\RunRepository;
 use App\Application\Scaling\AutoscalePolicy;
 use App\Domain\Platform\PlatformCode;
+use App\Domain\Venue\ArenaSize;
 use App\Domain\Venue\SectionStatus;
 use App\Domain\Venue\SectionTier;
 use Doctrine\DBAL\Connection;
@@ -25,8 +26,8 @@ final readonly class BootstrapQuery
 
     public function __invoke(): ArenaBootstrap
     {
-        /** @var array{id: int, name: string, venue_name: string}|false $event */
-        $event = $this->db->fetchAssociative('SELECT e.id, e.name, v.name AS venue_name FROM events e JOIN venues v ON v.id = e.venue_id ORDER BY e.id LIMIT 1');
+        /** @var array{id: int, name: string, venue_name: string, arena_size: string}|false $event */
+        $event = $this->db->fetchAssociative('SELECT e.id, e.name, v.name AS venue_name, v.arena_size FROM events e JOIN venues v ON v.id = e.venue_id ORDER BY e.id LIMIT 1');
         if (false === $event) {
             throw new \RuntimeException('Arena is not seeded; run bin/console turnstile:seed');
         }
@@ -57,6 +58,7 @@ final readonly class BootstrapQuery
             eventName: $event['name'],
             arenaWidth: ArenaGeometry::WIDTH,
             arenaHeight: ArenaGeometry::HEIGHT,
+            seatPitch: ArenaSize::from($event['arena_size'])->seatPitch(),
             seatCount: array_sum(array_map(intval(...), $byStatus)),
             sections: $sections,
             platforms: $platforms,

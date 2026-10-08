@@ -18,7 +18,9 @@ x-api-image: &api-image
     MERCURE_SUBSCRIBER_JWT_KEY: ${MERCURE_SUBSCRIBER_JWT_KEY:-turnstile-subscriber-demo-key-change-me-0123456789}
     MOCKS_BASE_URL: http://mocks:8090
     SCALER_URL: http://scaler:8070
-    MAX_WORKERS: ${MAX_WORKERS:-32}
+    # The one ceiling for the + stepper, Auto and the scaler. Set it in .env before first boot; see README → Sizing.
+    MAX_WORKERS: &max-workers ${MAX_WORKERS:-32}
+    ARENA_SIZE: ${ARENA_SIZE:-demo}
   depends_on:
     mysql:
       condition: service_healthy
@@ -143,7 +145,7 @@ services:
       COMPOSE_PROJECT: turnstile
       WORKER_SERVICE: worker
       MIN_WORKERS: 1
-      MAX_WORKERS: ${MAX_WORKERS:-32}
+      MAX_WORKERS: *max-workers
     volumes:
       # Demo only: the socket gives this container root on the host. See README → Scaling.
       - /var/run/docker.sock:/var/run/docker.sock

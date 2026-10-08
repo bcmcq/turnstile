@@ -19,6 +19,7 @@ final readonly class ArenaBootstrap
         public string $eventName,
         public float $arenaWidth,
         public float $arenaHeight,
+        public float $seatPitch,
         public int $seatCount,
         public array $sections,
         public array $platforms,

@@ -70,7 +70,7 @@ final class ControllersTest extends ApiCase
     public function testWorkersExposeTheAutoscaleBounds(): void
     {
         self::assertSame(200, $this->json('GET', '/api/workers'));
-        self::assertSame(['min' => 2, 'max' => 24], array_intersect_key($this->bodyArray('autoscale'), ['min' => 1, 'max' => 1]));
+        self::assertSame(['min' => 2, 'max' => 32], array_intersect_key($this->bodyArray('autoscale'), ['min' => 1, 'max' => 1]));
     }
 
     public function testRunValidationAndJobLookups(): void

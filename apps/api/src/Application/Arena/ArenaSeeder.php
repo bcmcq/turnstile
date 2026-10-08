@@ -8,6 +8,7 @@ use App\Domain\Event\Event;
 use App\Domain\Platform\Platform;
 use App\Domain\Platform\PlatformCode;
 use App\Domain\Ticket\TicketStatus;
+use App\Domain\Venue\ArenaSize;
 use App\Domain\Venue\Section;
 use App\Domain\Venue\Venue;
 use Doctrine\DBAL\Connection;
@@ -22,6 +23,7 @@ final class ArenaSeeder
         private readonly EntityManagerInterface $em,
         private readonly Connection $db,
         private readonly string $mocksBaseUrl,
+        private readonly ArenaSize $arenaSize,
     ) {
     }
 
@@ -35,10 +37,10 @@ final class ArenaSeeder
     /** @return array{seats: int, sections: int} */
     public function seed(): array
     {
-        $geometry = new ArenaGeometry();
+        $geometry = ArenaGeometry::for($this->arenaSize);
         $now = new \DateTimeImmutable()->format('Y-m-d H:i:s');
 
-        $venue = new Venue('arena-1', 'Turnstile Arena');
+        $venue = new Venue('arena-1', 'Turnstile Arena', $this->arenaSize);
         $event = new Event($venue, 'Home Opener', new \DateTimeImmutable('+30 days 19:00'));
         $this->em->persist($venue);
         $this->em->persist($event);

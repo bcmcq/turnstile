@@ -3,8 +3,8 @@ import type { PlatformView } from '@/api/types'
 
 /** Mirrors ArenaGeometry in the API: the floor rectangle the rings wrap around. */
 export const FLOOR = { width: 300, height: 140, radius: 12 } as const
-/** Seat dot edge in arena units (pitch is 2, so dots never touch). */
-export const SEAT_SIZE = 3.4
+/** Seat dot edge as a fraction of the seat pitch, so dots never touch at any density. */
+export const SEAT_SIZE_RATIO = 3.4 / 5.4
 export const SEAT_RADIUS_PX = 2
 
 /** Adds one seat (rounded square) to the current path; batch many per fill, a fill per seat is what makes frames drop. */

@@ -1,7 +1,7 @@
 import { gsap } from 'gsap'
 import { onBeforeUnmount, onMounted, reactive, type Ref } from 'vue'
 import type { SectionView } from '@/api/types'
-import { COLORS, FLOOR, SEAT_SIZE, SeatPalette, fillSeat, seatPath } from '@/lib/arenaPalette'
+import { COLORS, FLOOR, SeatPalette, fillSeat, seatPath } from '@/lib/arenaPalette'
 import type { SeatTable } from '@/lib/seatTable'
 
 export interface ArenaView {
@@ -18,6 +18,8 @@ export interface ArenaCanvasOptions {
   canvas: Ref<HTMLCanvasElement | null>
   container: Ref<HTMLElement | null>
   arenaWidth: number
+  /** Seat dot edge in arena units; follows the seeded density. */
+  seatSize: () => number
   arenaHeight: number
   seats: () => SeatTable | null
   sections: () => SectionView[]
@@ -46,7 +48,7 @@ export function useArenaCanvas(opts: ArenaCanvasOptions) {
   let drag: { x: number; y: number; ox: number; oy: number; moved: boolean } | null = null
 
   function seatPx(): number {
-    return Math.max(1, SEAT_SIZE * view.scale)
+    return Math.max(1, opts.seatSize() * view.scale)
   }
 
   function toScreen(ux: number, uy: number): [number, number] {

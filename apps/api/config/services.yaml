@@ -2,6 +2,7 @@
 
 parameters:
     env(HOSTNAME): local
+    env(ARENA_SIZE): demo
 
 services:
     _defaults:
@@ -13,6 +14,7 @@ services:
             string $scalerUrl: '%env(SCALER_URL)%'
             string $workerId: '%env(HOSTNAME)%'
             int $maxWorkers: '%env(int:MAX_WORKERS)%'
+            App\Domain\Venue\ArenaSize $arenaSize: '%env(enum:App\Domain\Venue\ArenaSize:ARENA_SIZE)%'
 
     App\:
         resource: '../src/'

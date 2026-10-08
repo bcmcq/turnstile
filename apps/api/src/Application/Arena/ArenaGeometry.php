@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Application\Arena;
 
+use App\Domain\Venue\ArenaSize;
 use App\Domain\Venue\SeatType;
 use App\Domain\Venue\SectionTier;
 
@@ -21,18 +22,10 @@ final class ArenaGeometry
     public const float WIDTH = 720.0;
     public const float HEIGHT = 540.0;
     public const int SECTORS = 16;
-    public const int LOWER_RINGS = 8;
-    public const int UPPER_RINGS = 10;
 
     private const float FLOOR_W = 300.0;
     private const float FLOOR_H = 140.0;
     private const float CORNER = 12.0;
-    private const float SEAT_PITCH = 5.4;     // along a ring
-    private const float ROW_PITCH = 7.0;      // between rings
-    private const float FIRST_GAP = 16.0;     // floor edge → first ring
-    private const float CONCOURSE = 26.0;     // extra gap between the bowls
-    private const float AISLE_HALF = 4.0;     // half width of the aisle between sections
-    private const float MID_AISLE_HALF = 2.0; // half width of the aisle through a section's middle
 
     /** @var list<SeatPoint> */
     public private(set) array $seats = [];
@@ -40,20 +33,38 @@ final class ArenaGeometry
     /** @var list<SectionShape> sectors 0..15 lower, 16..31 upper */
     public private(set) array $sections = [];
 
-    public function __construct()
-    {
+    /** Defaults are the Figma dot field (4,280 seats); for() holds the presets. */
+    public function __construct(
+        public readonly float $seatPitch = 5.4,     // along a ring
+        public readonly float $rowPitch = 7.0,      // between rings
+        public readonly int $lowerRings = 8,
+        public readonly int $upperRings = 10,
+        private readonly float $firstGap = 16.0,    // floor edge → first ring
+        private readonly float $concourse = 26.0,   // extra gap between the bowls
+        private readonly float $aisleHalf = 4.0,    // half width of the aisle between sections
+        private readonly float $midAisleHalf = 2.0, // half width of the aisle through a section's middle
+    ) {
         $this->build();
+    }
+
+    public static function for(ArenaSize $size): self
+    {
+        return match ($size) {
+            ArenaSize::Demo => new self(seatPitch: $size->seatPitch()),
+            // about 49k seats on the same canvas: a dense dot field at fit, individual seats only when zoomed
+            ArenaSize::Full => new self(seatPitch: $size->seatPitch(), rowPitch: 2.3, lowerRings: 24, upperRings: 38, firstGap: 12.0, concourse: 20.0, aisleHalf: 2.0, midAisleHalf: 1.0),
+        };
     }
 
     private function build(): void
     {
-        $rings = self::LOWER_RINGS + self::UPPER_RINGS;
+        $rings = $this->lowerRings + $this->upperRings;
         $counters = [];
         for ($ring = 0; $ring < $rings; ++$ring) {
-            $isUpper = $ring >= self::LOWER_RINGS;
-            $ringInTier = $isUpper ? $ring - self::LOWER_RINGS : $ring;
-            $lastRingOfTier = $ringInTier === ($isUpper ? self::UPPER_RINGS : self::LOWER_RINGS) - 1;
-            foreach ($this->ringSeats(self::ringOffset($ring)) as [$sector, $x, $y]) {
+            $isUpper = $ring >= $this->lowerRings;
+            $ringInTier = $isUpper ? $ring - $this->lowerRings : $ring;
+            $lastRingOfTier = $ringInTier === ($isUpper ? $this->upperRings : $this->lowerRings) - 1;
+            foreach ($this->ringSeats($this->ringOffset($ring)) as [$sector, $x, $y]) {
                 $sectionIndex = ($isUpper ? self::SECTORS : 0) + $sector;
                 $seatNo = ($counters[$sectionIndex][$ring] ?? 0) + 1;
                 $counters[$sectionIndex][$ring] = $seatNo;
@@ -67,11 +78,11 @@ final class ArenaGeometry
         }
 
         // Lower labels sit in the concourse, upper labels outside the bowl, each on its section's centre line.
-        $lowerLabelOff = self::ringOffset(self::LOWER_RINGS - 1) + self::ROW_PITCH + self::CONCOURSE / 2;
-        $upperLabelOff = self::ringOffset($rings - 1) + 16;
+        $lowerLabelOff = $this->ringOffset($this->lowerRings - 1) + $this->rowPitch + $this->concourse / 2;
+        $upperLabelOff = $this->ringOffset($rings - 1) + 16;
         foreach ([SectionTier::Lower, SectionTier::Upper] as $tier) {
             $isUpper = SectionTier::Upper === $tier;
-            $outer = self::ringOffset($isUpper ? $rings - 1 : self::LOWER_RINGS - 1);
+            $outer = $this->ringOffset($isUpper ? $rings - 1 : $this->lowerRings - 1);
             for ($k = 0; $k < self::SECTORS; ++$k) {
                 [$lx, $ly] = $this->sectionPoint($k, 0.5, $isUpper ? $upperLabelOff : $lowerLabelOff);
                 [$sx, $sy] = $this->sectionPoint($k, 0.0, $outer);
@@ -81,8 +92,8 @@ final class ArenaGeometry
                     $tier,
                     self::angleOf($sx, $sy),
                     self::angleOf($ex, $ey),
-                    $isUpper ? self::LOWER_RINGS : 0,
-                    $isUpper ? $rings - 1 : self::LOWER_RINGS - 1,
+                    $isUpper ? $this->lowerRings : 0,
+                    $isUpper ? $rings - 1 : $this->lowerRings - 1,
                     self::WIDTH / 2 + $lx,
                     self::HEIGHT / 2 + $ly,
                 );
@@ -90,9 +101,9 @@ final class ArenaGeometry
         }
     }
 
-    private static function ringOffset(int $ring): float
+    private function ringOffset(int $ring): float
     {
-        return self::FIRST_GAP + $ring * self::ROW_PITCH + ($ring >= self::LOWER_RINGS ? self::CONCOURSE : 0);
+        return $this->firstGap + $ring * $this->rowPitch + ($ring >= $this->lowerRings ? $this->concourse : 0);
     }
 
     /** @return array{float, float, float} half-width, half-height, corner radius of the ring at $off */
@@ -136,13 +147,13 @@ final class ArenaGeometry
      */
     private function edgeSeats(string $edge, float $len, int $parts, \Closure $point): iterable
     {
-        $n = (int) floor($len / self::SEAT_PITCH);
+        $n = (int) floor($len / $this->seatPitch);
         $sectionLen = $len / $parts;
         for ($i = 0; $i < $n; ++$i) {
-            $t = $len / 2 + ($i - ($n - 1) / 2) * self::SEAT_PITCH;
+            $t = $len / 2 + ($i - ($n - 1) / 2) * $this->seatPitch;
             $part = min($parts - 1, (int) floor($t / $sectionLen));
             $local = $t - $part * $sectionLen;
-            if ($local < self::AISLE_HALF || $sectionLen - $local < self::AISLE_HALF || abs($local - $sectionLen / 2) < self::MID_AISLE_HALF) {
+            if ($local < $this->aisleHalf || $sectionLen - $local < $this->aisleHalf || abs($local - $sectionLen / 2) < $this->midAisleHalf) {
                 continue;
             }
             [$x, $y] = $point($t);
@@ -159,11 +170,11 @@ final class ArenaGeometry
     private function cornerSeats(float $a, float $b, float $cr, int $sx, int $sy, int $sector, bool $reverse): iterable
     {
         $arc = \M_PI * $cr / 2;
-        $n = (int) round($arc / self::SEAT_PITCH);
+        $n = (int) round($arc / $this->seatPitch);
         for ($k = 0; $k < $n; ++$k) {
             $i = $reverse ? $n - 1 - $k : $k;
             $s = ($i + 0.5) / $n * $arc;
-            if ($s < self::AISLE_HALF || $arc - $s < self::AISLE_HALF || abs($s - $arc / 2) < self::MID_AISLE_HALF) {
+            if ($s < $this->aisleHalf || $arc - $s < $this->aisleHalf || abs($s - $arc / 2) < $this->midAisleHalf) {
                 continue;
             }
             $ang = $s / $arc * \M_PI / 2;

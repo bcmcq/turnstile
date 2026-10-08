@@ -21,6 +21,7 @@ const map = useArenaCanvas({
   container,
   arenaWidth: arena.arenaSize.width,
   arenaHeight: arena.arenaSize.height,
+  seatSize: () => arena.seatSize,
   seats: () => arena.seats,
   sections: () => arena.sections,
   palette: () => palette.value,

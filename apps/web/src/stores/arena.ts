@@ -2,6 +2,7 @@ import { acceptHMRUpdate, defineStore } from 'pinia'
 import { computed, ref, shallowRef } from 'vue'
 import { api } from '@/api/client'
 import type { ArenaBootstrap, PlatformCode, PlatformView, SectionView } from '@/api/types'
+import { SEAT_SIZE_RATIO } from '@/lib/arenaPalette'
 import { SeatTable } from '@/lib/seatTable'
 
 /** Static arena data from /api/bootstrap, the seat table from /api/seats, and the user's selection. */
@@ -21,6 +22,8 @@ export const useArenaStore = defineStore('arena', () => {
   const platformByCode = computed(() => new Map(platforms.value.map((p) => [p.code, p])))
   const seatCount = computed(() => bootstrap.value?.seatCount ?? 0)
   const arenaSize = computed(() => ({ width: bootstrap.value?.arenaWidth ?? 880, height: bootstrap.value?.arenaHeight ?? 720 }))
+  /** Seat dot edge in arena units. */
+  const seatSize = computed(() => (bootstrap.value?.seatPitch ?? 5.4) * SEAT_SIZE_RATIO)
 
   const selectedSeatTotal = computed(() => {
     let n = 0
@@ -90,7 +93,7 @@ export const useArenaStore = defineStore('arena', () => {
   }
 
   return {
-    bootstrap, seats, seatsError, loadSeats, sections, platforms, sectionById, platformById, platformByCode, seatCount, arenaSize,
+    bootstrap, seats, seatsError, loadSeats, sections, platforms, sectionById, platformById, platformByCode, seatCount, arenaSize, seatSize,
     selectedSections, selectedTickets, selectedSeatTotal, selectionSummary, focus,
     setBootstrap, toggleSection, toggleTicket, selectTickets, setSections, clearSelection, focusSections, platformColor,
   }

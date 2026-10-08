@@ -23,6 +23,8 @@ class Venue
         public private(set) string $code,
         #[ORM\Column(length: 120)]
         public private(set) string $name,
+        #[ORM\Column(length: 8, enumType: ArenaSize::class, options: ['default' => 'demo'])]
+        public private(set) ArenaSize $arenaSize,
     ) {
         $this->createdAt = new \DateTimeImmutable();
     }
