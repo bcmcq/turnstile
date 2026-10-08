@@ -113,43 +113,61 @@ final class ArenaGeometry
         [$a, $b, $cr] = $this->ringGeometry($off);
         $edgeW = 2 * ($a - $cr);   // top / bottom straight length (same on every ring)
         $edgeH = 2 * ($b - $cr);   // left / right straight length
-        $arc = \M_PI * $cr / 2;
 
-        // Straight edges: t runs along the edge from its start in clockwise order; sections are equal slices.
-        $edges = [
-            ['right', $edgeH, 2, static fn (float $t): array => [$a, -$edgeH / 2 + $t]],
-            ['bottom', $edgeW, 4, static fn (float $t): array => [$edgeW / 2 - $t, $b]],
-            ['left', $edgeH, 2, static fn (float $t): array => [-$a, $edgeH / 2 - $t]],
-            ['top', $edgeW, 4, static fn (float $t): array => [-$edgeW / 2 + $t, -$b]],
-        ];
-        foreach ($edges as [$edge, $len, $parts, $point]) {
-            $n = (int) floor($len / self::SEAT_PITCH);
-            $sectionLen = $len / $parts;
-            for ($i = 0; $i < $n; ++$i) {
-                $t = $len / 2 + ($i - ($n - 1) / 2) * self::SEAT_PITCH;
-                $part = min($parts - 1, (int) floor($t / $sectionLen));
-                $local = $t - $part * $sectionLen;
-                if ($local < self::AISLE_HALF || $sectionLen - $local < self::AISLE_HALF || abs($local - $sectionLen / 2) < self::MID_AISLE_HALF) {
-                    continue;
-                }
-                yield [self::edgeSector($edge, $part, $len, $t), ...$point($t)];
+        // One continuous clockwise walk per ring (ids, and so dispatch order, follow it):
+        // top → top-right corner → right → bottom-right → bottom → bottom-left → left → top-left.
+        yield from $this->edgeSeats('top', $edgeW, 4, static fn (float $t): array => [-$edgeW / 2 + $t, -$b]);
+        yield from $this->cornerSeats($a, $b, $cr, 1, -1, 14, true);
+        yield from $this->edgeSeats('right', $edgeH, 2, static fn (float $t): array => [$a, -$edgeH / 2 + $t]);
+        yield from $this->cornerSeats($a, $b, $cr, 1, 1, 1, false);
+        yield from $this->edgeSeats('bottom', $edgeW, 4, static fn (float $t): array => [$edgeW / 2 - $t, $b]);
+        yield from $this->cornerSeats($a, $b, $cr, -1, 1, 6, true);
+        yield from $this->edgeSeats('left', $edgeH, 2, static fn (float $t): array => [-$a, $edgeH / 2 - $t]);
+        yield from $this->cornerSeats($a, $b, $cr, -1, -1, 9, false);
+    }
+
+    /**
+     * Straight edge: t runs along the edge from its start; sections are equal slices with an aisle at each
+     * boundary and a narrower one through the middle.
+     *
+     * @param \Closure(float): array{float, float} $point
+     *
+     * @return iterable<array{int, float, float}>
+     */
+    private function edgeSeats(string $edge, float $len, int $parts, \Closure $point): iterable
+    {
+        $n = (int) floor($len / self::SEAT_PITCH);
+        $sectionLen = $len / $parts;
+        for ($i = 0; $i < $n; ++$i) {
+            $t = $len / 2 + ($i - ($n - 1) / 2) * self::SEAT_PITCH;
+            $part = min($parts - 1, (int) floor($t / $sectionLen));
+            $local = $t - $part * $sectionLen;
+            if ($local < self::AISLE_HALF || $sectionLen - $local < self::AISLE_HALF || abs($local - $sectionLen / 2) < self::MID_AISLE_HALF) {
+                continue;
             }
+            [$x, $y] = $point($t);
+            yield [self::edgeSector($edge, $part, $len, $t), $x, $y];
         }
+    }
 
-        // Corner arcs: one section each, seats fanned from the arc centre.
-        $corners = [
-            [1, 1, 1], [-1, 1, 6], [-1, -1, 9], [1, -1, 14], // [sx, sy, sector]
-        ];
+    /**
+     * Corner arc: one section, seats fanned from the arc centre; $reverse walks it the other way so the
+     * ring stays clockwise.
+     *
+     * @return iterable<array{int, float, float}>
+     */
+    private function cornerSeats(float $a, float $b, float $cr, int $sx, int $sy, int $sector, bool $reverse): iterable
+    {
+        $arc = \M_PI * $cr / 2;
         $n = (int) round($arc / self::SEAT_PITCH);
-        foreach ($corners as [$sx, $sy, $sector]) {
-            for ($i = 0; $i < $n; ++$i) {
-                $s = ($i + 0.5) / $n * $arc;
-                if ($s < self::AISLE_HALF || $arc - $s < self::AISLE_HALF || abs($s - $arc / 2) < self::MID_AISLE_HALF) {
-                    continue;
-                }
-                $ang = $s / $arc * \M_PI / 2;
-                yield [$sector, $sx * ($a - $cr + $cr * cos($ang)), $sy * ($b - $cr + $cr * sin($ang))];
+        for ($k = 0; $k < $n; ++$k) {
+            $i = $reverse ? $n - 1 - $k : $k;
+            $s = ($i + 0.5) / $n * $arc;
+            if ($s < self::AISLE_HALF || $arc - $s < self::AISLE_HALF || abs($s - $arc / 2) < self::MID_AISLE_HALF) {
+                continue;
             }
+            $ang = $s / $arc * \M_PI / 2;
+            yield [$sector, $sx * ($a - $cr + $cr * cos($ang)), $sy * ($b - $cr + $cr * sin($ang))];
         }
     }
 
