@@ -1,8 +1,24 @@
 <script setup lang="ts">
 export type ButtonVariant = 'primary' | 'ghost' | 'danger'
 
-const props = withDefaults(defineProps<{ variant?: ButtonVariant; disabled?: boolean; busy?: boolean; title?: string; size?: 'sm' | 'md' }>(), { variant: 'ghost', disabled: false, busy: false, size: 'md' })
-const emit = defineEmits<{ click: [event: MouseEvent] }>()
+const props = withDefaults(
+  defineProps<{
+    variant?: ButtonVariant
+    disabled?: boolean
+    busy?: boolean
+    title?: string
+    size?: 'sm' | 'md'
+  }>(),
+  {
+    variant: 'ghost',
+    disabled: false,
+    busy: false,
+    size: 'md',
+  },
+)
+const emit = defineEmits<{
+  click: [event: MouseEvent]
+}>()
 
 const classes: Record<ButtonVariant, string> = {
   primary: 'bg-tixhub text-bg hover:bg-tixhub/90 focus-visible:ring-tixhub/60',

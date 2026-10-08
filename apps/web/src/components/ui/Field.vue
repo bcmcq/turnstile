@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import Label from '@/components/ui/Label.vue'
 
-defineProps<{ label: string }>()
+defineProps<{
+  label: string
+}>()
 </script>
 
 <template>

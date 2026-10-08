@@ -3,8 +3,13 @@ import { ref, watch } from 'vue'
 import Label from '@/components/ui/Label.vue'
 import { fmtPct } from '@/lib/format'
 
-const props = defineProps<{ modelValue: number; disabled?: boolean }>()
-const emit = defineEmits<{ commit: [value: number] }>()
+const props = defineProps<{
+  modelValue: number
+  disabled?: boolean
+}>()
+const emit = defineEmits<{
+  commit: [value: number]
+}>()
 const local = ref(props.modelValue)
 watch(() => props.modelValue, (v) => (local.value = v))
 </script>

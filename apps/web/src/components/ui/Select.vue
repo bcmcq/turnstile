@@ -5,8 +5,15 @@ export interface SelectOption<T extends string> {
   disabled?: boolean
 }
 
-const props = defineProps<{ modelValue: string; options: SelectOption<string>[]; disabled?: boolean; width?: string }>()
-const emit = defineEmits<{ 'update:modelValue': [value: string] }>()
+const props = defineProps<{
+  modelValue: string
+  options: SelectOption<string>[]
+  disabled?: boolean
+  width?: string
+}>()
+const emit = defineEmits<{
+  'update:modelValue': [value: string]
+}>()
 </script>
 
 <template>

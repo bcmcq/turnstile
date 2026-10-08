@@ -4,7 +4,9 @@ import type { SectionTier, SectionView } from '@/api/types'
 import { fmtInt } from '@/lib/format'
 import { useArenaStore } from '@/stores/arena'
 
-const props = defineProps<{ disabled?: boolean }>()
+const props = defineProps<{
+  disabled?: boolean
+}>()
 const arena = useArenaStore()
 const open = ref(false)
 const root = ref<HTMLElement | null>(null)

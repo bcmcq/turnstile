@@ -1,7 +1,17 @@
 <script setup lang="ts">
 export type ChipTone = 'cyan' | 'violet' | 'amber' | 'green' | 'red' | 'orange' | 'muted' | 'fg'
 
-const props = withDefaults(defineProps<{ label: string; tone?: ChipTone; dot?: boolean }>(), { tone: 'muted', dot: true })
+const props = withDefaults(
+  defineProps<{
+    label: string
+    tone?: ChipTone
+    dot?: boolean
+  }>(),
+  {
+    tone: 'muted',
+    dot: true,
+  },
+)
 
 const tones: Record<ChipTone, { text: string; bg: string; dot: string }> = {
   cyan: { text: 'text-tixhub', bg: 'bg-tixhub/15', dot: 'bg-tixhub' },

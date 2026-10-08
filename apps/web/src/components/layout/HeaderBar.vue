@@ -7,7 +7,9 @@ import { fmtClock, fmtEta, fmtInt, fmtPct, runStatusLabel } from '@/lib/format'
 import { useMetricsStore } from '@/stores/metrics'
 import { useRunStore } from '@/stores/run'
 
-const props = defineProps<{ connected: boolean }>()
+const props = defineProps<{
+  connected: boolean
+}>()
 const run = useRunStore()
 const metrics = useMetricsStore()
 const { now } = useClock()
