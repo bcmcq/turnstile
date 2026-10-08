@@ -7,7 +7,7 @@ import { fmtMoney } from '@/lib/format'
 import type { SeatTable } from '@/lib/seatTable'
 import { useArenaStore } from '@/stores/arena'
 
-export type SeatOverlayKind = 'in_flight' | 'retry_wait' | 'conflict' | 'failed' | null
+import type { SeatOverlayKind } from '@/composables/useSeatAnimations'
 
 const props = defineProps<{
   seats: SeatTable
@@ -39,6 +39,8 @@ const stateChip = computed<{ label: string; tone: ChipTone }>(() => {
 })
 const overlayChip = computed<{ label: string; tone: ChipTone } | null>(() => {
   switch (props.overlay) {
+    case 'queued':
+      return { label: 'Queued', tone: 'muted' }
     case 'in_flight':
       return { label: 'In flight', tone: 'orange' }
     case 'retry_wait':

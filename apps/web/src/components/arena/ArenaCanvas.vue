@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { gsap } from 'gsap'
 import { computed, ref, watch } from 'vue'
 import SeatTooltip from '@/components/arena/SeatTooltip.vue'
 import { useArenaCanvas } from '@/composables/useArenaCanvas'
@@ -45,10 +46,10 @@ function drawSelection(ctx: CanvasRenderingContext2D, view: { scale: number; off
   const s = Math.max(2, map.seatPx())
   const half = s / 2
 
-  // selected sections: faint wash over their seats + highlighted label (wash only while idle: during a run the colors are the data)
-  if (arena.selectedSections.size && !run.isActive) {
+  // selected sections: faint wash over their seats + highlighted label
+  if (wash.alpha > 0.005 && arena.selectedSections.size) {
     ctx.fillStyle = COLORS.cyan
-    ctx.globalAlpha = 0.22
+    ctx.globalAlpha = wash.alpha
     for (let i = 0; i < seats.size; i++) {
       if (!arena.selectedSections.has(seats.sectionId[i])) continue
       const x = seats.x[i] * view.scale + view.offsetX
@@ -123,9 +124,48 @@ const fx = useSeatAnimations({
   palette: () => palette.value,
   markSeatsDirty: (i) => map.markSeatsDirty(i),
   requestFrame: () => map.requestFrame(),
+  runSelection: (runId) => (run.current?.id === runId ? run.current.selection : null),
+  queuedColor: () => arena.platformColor(run.current?.targetPlatform) ?? COLORS.muted,
   arenaWidth: arena.arenaSize.width,
   arenaHeight: arena.arenaSize.height,
 })
+
+// selection wash fades in and out instead of snapping (hidden during a run: the colors are the data)
+const wash = { alpha: 0 }
+watch(
+  () => (arena.selectedSections.size > 0 && !run.isActive ? 0.22 : 0),
+  (alpha) => {
+    gsap.killTweensOf(wash)
+    gsap.to(wash, { alpha, duration: 0.35, ease: 'power2.out', onUpdate: () => map.requestFrame() })
+  },
+)
+
+// picking sections in the dropdown zooms the map to them
+watch(
+  () => arena.focus.seq,
+  () => {
+    const seats = arena.seats
+    const ids = new Set(arena.focus.ids)
+    if (!seats || ids.size === 0) {
+      map.fit(true)
+      return
+    }
+    let minX = Infinity
+    let minY = Infinity
+    let maxX = -Infinity
+    let maxY = -Infinity
+    for (let i = 0; i < seats.size; i++) {
+      if (!ids.has(seats.sectionId[i])) continue
+      const x = seats.x[i]
+      const y = seats.y[i]
+      if (x < minX) minX = x
+      if (x > maxX) maxX = x
+      if (y < minY) minY = y
+      if (y > maxY) maxY = y
+    }
+    if (minX < maxX) map.zoomToBounds(minX - 6, minY - 6, maxX + 6, maxY + 6)
+  },
+)
 
 watch(() => arena.seats, (seats) => {
   map.invalidate()
@@ -150,7 +190,7 @@ defineExpose({ map })
       @pointerup="onUp"
       @pointercancel="map.onPointerUp"
       @pointerleave="pick.onPointerLeave"
-      @dblclick="map.fit"
+      @dblclick="map.fit(true)"
     />
     <SeatTooltip
       v-if="pick.hover.value && arena.seats"
@@ -168,7 +208,7 @@ defineExpose({ map })
       <button type="button" class="size-6 rounded hover:bg-panel-2" title="Zoom out" @click="map.zoomOut">−</button>
       <span class="w-10 text-center text-[11px] text-muted tabular-nums">{{ zoomLabel }}</span>
       <button type="button" class="size-6 rounded hover:bg-panel-2" title="Zoom in" @click="map.zoomIn">+</button>
-      <button type="button" class="rounded px-1.5 text-[11px] text-muted hover:bg-panel-2" title="Fit (double-click the map)" @click="map.fit">fit</button>
+      <button type="button" class="rounded px-1.5 text-[11px] text-muted hover:bg-panel-2" title="Fit (double-click the map)" @click="map.fit(true)">fit</button>
     </div>
   </div>
 </template>

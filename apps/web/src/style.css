@@ -22,3 +22,8 @@
 
 html, body, #app { height: 100%; }
 body { @apply bg-bg text-fg font-sans antialiased; }
+
+button, [role="button"], [role="switch"], select, summary, input[type="range"] { cursor: pointer; }
+button:disabled, [role="switch"]:disabled { cursor: not-allowed; }
+/* Baseline hover for every enabled control; components add their own color changes on top. */
+button:not(:disabled):hover, [role="switch"]:not(:disabled):hover, select:hover { filter: brightness(1.2); }

@@ -51,8 +51,8 @@ async function retryAll(): Promise<void> {
           v-for="t in tabs"
           :key="t.id"
           type="button"
-          class="flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs focus:outline-none focus-visible:ring-2 focus-visible:ring-tixhub/60"
-          :class="active === t.id ? 'bg-panel-2 font-semibold text-fg' : 'font-medium text-muted hover:text-fg'"
+          class="flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs transition focus:outline-none focus-visible:ring-2 focus-visible:ring-tixhub/60"
+          :class="active === t.id ? 'bg-panel-2 font-semibold text-fg' : 'font-medium text-muted hover:bg-panel-2/60 hover:text-fg'"
           @click="active = t.id"
         >
           {{ t.label }}

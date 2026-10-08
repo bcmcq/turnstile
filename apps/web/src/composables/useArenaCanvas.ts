@@ -1,3 +1,4 @@
+import { gsap } from 'gsap'
 import { onBeforeUnmount, onMounted, reactive, type Ref } from 'vue'
 import type { SectionView } from '@/api/types'
 import { COLORS, FLOOR, SEAT_SIZE, SeatPalette, fillSeat, seatPath } from '@/lib/arenaPalette'
@@ -56,18 +57,51 @@ export function useArenaCanvas(opts: ArenaCanvasOptions) {
     return [(sx - view.offsetX) / view.scale, (sy - view.offsetY) / view.scale]
   }
 
-  function fit(): void {
+  function fit(animated = false): void {
     const el = opts.container.value
     if (!el) return
+    gsap.killTweensOf(view)
     view.width = el.clientWidth
     view.height = el.clientHeight
     view.fitScale = Math.min(view.width / opts.arenaWidth, view.height / opts.arenaHeight)
-    view.scale = view.fitScale
-    view.offsetX = (view.width - opts.arenaWidth * view.scale) / 2
-    view.offsetY = (view.height - opts.arenaHeight * view.scale) / 2
+    const scale = view.fitScale
+    const offsetX = (view.width - opts.arenaWidth * scale) / 2
+    const offsetY = (view.height - opts.arenaHeight * scale) / 2
     resizeCanvases()
+    if (animated) {
+      animateView(scale, offsetX, offsetY)
+      return
+    }
+    view.scale = scale
+    view.offsetX = offsetX
+    view.offsetY = offsetY
     baseDirty = true
     requestFrame()
+  }
+
+  /** Tween the view transform; every frame re-renders the base layer, which is cheap at this seat count. */
+  function animateView(scale: number, offsetX: number, offsetY: number): void {
+    gsap.killTweensOf(view)
+    gsap.to(view, {
+      scale,
+      offsetX,
+      offsetY,
+      duration: 0.5,
+      ease: 'power3.out',
+      onUpdate: () => {
+        baseDirty = true
+        requestFrame()
+      },
+    })
+  }
+
+  /** Zoom so the given arena-unit box fills the panel with some padding, capped at max zoom. */
+  function zoomToBounds(minX: number, minY: number, maxX: number, maxY: number, paddingPx = 48, maxZoom = 3.5): void {
+    const w = Math.max(1, maxX - minX)
+    const h = Math.max(1, maxY - minY)
+    // capped below MAX_ZOOM so a single section keeps its neighbours in view for context
+    const scale = Math.min(view.fitScale * maxZoom, Math.max(view.fitScale, Math.min((view.width - 2 * paddingPx) / w, (view.height - 2 * paddingPx) / h)))
+    animateView(scale, view.width / 2 - ((minX + maxX) / 2) * scale, view.height / 2 - ((minY + maxY) / 2) * scale)
   }
 
   function resizeCanvases(): void {
@@ -90,10 +124,15 @@ export function useArenaCanvas(opts: ArenaCanvasOptions) {
     view.offsetY = Math.min(view.height - h * 0.25, Math.max(-h * 0.75, view.offsetY))
   }
 
-  function zoomAt(sx: number, sy: number, factor: number): void {
+  function zoomAt(sx: number, sy: number, factor: number, animated = false): void {
+    gsap.killTweensOf(view)
     const next = Math.min(view.fitScale * MAX_ZOOM, Math.max(view.fitScale, view.scale * factor))
     if (next === view.scale) return
     const [ux, uy] = toUnit(sx, sy)
+    if (animated) {
+      animateView(next, sx - ux * next, sy - uy * next)
+      return
+    }
     view.scale = next
     view.offsetX = sx - ux * next
     view.offsetY = sy - uy * next
@@ -237,6 +276,7 @@ export function useArenaCanvas(opts: ArenaCanvasOptions) {
 
   function onPointerDown(e: PointerEvent): void {
     if (e.button !== 0) return
+    gsap.killTweensOf(view)
     drag = { x: e.clientX, y: e.clientY, ox: view.offsetX, oy: view.offsetY, moved: false }
     ;(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId)
   }
@@ -262,11 +302,11 @@ export function useArenaCanvas(opts: ArenaCanvasOptions) {
   }
 
   function zoomIn(): void {
-    zoomAt(view.width / 2, view.height / 2, 1.5)
+    zoomAt(view.width / 2, view.height / 2, 1.5, true)
   }
 
   function zoomOut(): void {
-    zoomAt(view.width / 2, view.height / 2, 1 / 1.5)
+    zoomAt(view.width / 2, view.height / 2, 1 / 1.5, true)
   }
 
   onMounted(() => {
@@ -277,5 +317,5 @@ export function useArenaCanvas(opts: ArenaCanvasOptions) {
 
   onBeforeUnmount(() => observer?.disconnect())
 
-  return { view, toUnit, toScreen, seatPx, fit, zoomIn, zoomOut, invalidate, markSeatsDirty, requestFrame, onWheel, onPointerDown, onPointerMove, onPointerUp }
+  return { view, toUnit, toScreen, seatPx, fit, zoomIn, zoomOut, zoomToBounds, invalidate, markSeatsDirty, requestFrame, onWheel, onPointerDown, onPointerMove, onPointerUp }
 }

@@ -11,6 +11,8 @@ export const useArenaStore = defineStore('arena', () => {
   const seatsError = ref<string | null>(null)
   const selectedSections = ref<Set<number>>(new Set())
   const selectedTickets = ref<Set<number>>(new Set())
+  /** Bumped by the section picker so the canvas zooms to the chosen sections; canvas clicks never trigger it. */
+  const focus = ref<{ ids: number[]; seq: number }>({ ids: [], seq: 0 })
 
   const sections = computed<SectionView[]>(() => bootstrap.value?.sections ?? [])
   const platforms = computed<PlatformView[]>(() => bootstrap.value?.platforms ?? [])
@@ -73,13 +75,17 @@ export const useArenaStore = defineStore('arena', () => {
     selectedTickets.value = new Set()
   }
 
+  function focusSections(ids: number[]): void {
+    focus.value = { ids, seq: focus.value.seq + 1 }
+  }
+
   function platformColor(code: PlatformCode | null | undefined): string | null {
     return code ? (platformByCode.value.get(code)?.color ?? null) : null
   }
 
   return {
     bootstrap, seats, seatsError, loadSeats, sections, platforms, sectionById, platformById, platformByCode, seatCount, arenaSize,
-    selectedSections, selectedTickets, selectedSeatTotal, selectionSummary,
-    setBootstrap, toggleSection, toggleTicket, setSections, clearSelection, platformColor,
+    selectedSections, selectedTickets, selectedSeatTotal, selectionSummary, focus,
+    setBootstrap, toggleSection, toggleTicket, setSections, clearSelection, focusSections, platformColor,
   }
 })

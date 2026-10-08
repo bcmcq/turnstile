@@ -21,7 +21,7 @@ const emit = defineEmits<{
 }>()
 
 const classes: Record<ButtonVariant, string> = {
-  primary: 'bg-tixhub text-bg hover:bg-tixhub/90 focus-visible:ring-tixhub/60',
+  primary: 'bg-tixhub text-bg hover:bg-tixhub/85 focus-visible:ring-tixhub/60',
   ghost: 'border border-border bg-panel-2 text-fg hover:bg-border/60 focus-visible:ring-fg/30',
   danger: 'border border-fail/40 bg-fail/10 text-fail hover:bg-fail/20 focus-visible:ring-fail/50',
 }
