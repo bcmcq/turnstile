@@ -43,9 +43,6 @@ class Run
     public private(set) int $completedJobs = 0;
 
     #[ORM\Column(type: Types::INTEGER, options: ['unsigned' => true])]
-    public private(set) int $failedJobs = 0;
-
-    #[ORM\Column(type: Types::INTEGER, options: ['unsigned' => true])]
     public private(set) int $skippedJobs = 0;
 
     #[ORM\Column(type: Types::INTEGER, options: ['unsigned' => true])]

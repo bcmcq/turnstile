@@ -7,6 +7,7 @@ namespace App\Domain\Job;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 
+/** Schema only: rows are written and read with raw DBAL by JobRepository, so no constructor is needed. */
 #[ORM\Entity]
 #[ORM\Table(name: 'job_attempts')]
 #[ORM\UniqueConstraint(name: 'uq_job_attempts_job_no', columns: ['job_id', 'attempt_no'])]

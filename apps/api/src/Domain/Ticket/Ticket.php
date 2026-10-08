@@ -13,6 +13,7 @@ use Doctrine\ORM\Mapping as ORM;
 use Symfony\Bridge\Doctrine\Types\UuidType;
 use Symfony\Component\Uid\Uuid;
 
+/** Schema only: the seeder bulk-inserts and TicketRepository does the version-checked writes with raw DBAL. */
 #[ORM\Entity]
 #[ORM\Table(name: 'tickets')]
 #[ORM\UniqueConstraint(name: 'uq_tickets_event_seat', columns: ['event_id', 'seat_id'])]

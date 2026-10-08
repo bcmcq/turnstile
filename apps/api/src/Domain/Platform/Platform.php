@@ -27,7 +27,7 @@ class Platform
 
     /** Probability a list/reprice call is sniped by a buyer, which fires the listing.sold webhook. */
     #[ORM\Column(type: Types::DECIMAL, precision: 4, scale: 3)]
-    public private(set) string $buyerRate = '0.020';
+    public private(set) string $buyerRate = '0.000';
 
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE)]
     public private(set) \DateTimeImmutable $createdAt;
@@ -51,27 +51,5 @@ class Platform
     ) {
         $this->color = $code->color();
         $this->createdAt = $this->updatedAt = new \DateTimeImmutable();
-    }
-
-    public function name(): string
-    {
-        return $this->code->displayName();
-    }
-
-    public function listingPriceFor(int $faceValueCents): int
-    {
-        return max($this->minPriceCents, intdiv($faceValueCents * (10_000 + $this->feeBps), 10_000));
-    }
-
-    public function setFailureRate(float $rate): void
-    {
-        $this->failureRate = number_format(max(0.0, min(1.0, $rate)), 3, '.', '');
-        $this->updatedAt = new \DateTimeImmutable();
-    }
-
-    public function setBuyerRate(float $rate): void
-    {
-        $this->buyerRate = number_format(max(0.0, min(1.0, $rate)), 3, '.', '');
-        $this->updatedAt = new \DateTimeImmutable();
     }
 }

@@ -11,7 +11,7 @@ use App\Domain\Ticket\Ticket;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 
-/** Idempotency ledger: one applied action per ticket per run. The unique index is the guard. */
+/** Idempotency ledger: one applied action per ticket per run. The unique index is the guard. Schema only: Ledger writes it with raw DBAL. */
 #[ORM\Entity]
 #[ORM\Table(name: 'ticket_actions')]
 #[ORM\UniqueConstraint(name: 'uq_ticket_actions_ticket_run', columns: ['ticket_id', 'run_id'])]

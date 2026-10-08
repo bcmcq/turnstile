@@ -14,17 +14,4 @@ enum RunType: string
     case CloseSection = 'close_section';
     case OpenSection = 'open_section';
     case Replay = 'replay';
-
-    public function callsPlatform(): bool
-    {
-        return match ($this) {
-            self::Fill, self::OpenSection, self::Replay => false,
-            default => true,
-        };
-    }
-
-    public function requiresTargetPlatform(): bool
-    {
-        return self::Transfer === $this;
-    }
 }

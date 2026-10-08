@@ -7,7 +7,7 @@ namespace App\Domain\Venue;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 
-/** Seats are bulk-inserted by the seeder with raw DBAL; this entity exists for reads and relations. */
+/** Schema only: seats are bulk-inserted by the seeder with raw DBAL and read by SeatsPayload, never hydrated. */
 #[ORM\Entity]
 #[ORM\Table(name: 'seats')]
 #[ORM\UniqueConstraint(name: 'uq_seats_position', columns: ['section_id', 'row_label', 'seat_number'])]

@@ -10,7 +10,7 @@ use App\Domain\Ticket\Ticket;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 
-/** Rows are bulk-inserted at fan-out (raw DBAL) and updated per attempt. */
+/** Schema only: rows are bulk-inserted at fan-out and updated per attempt with raw DBAL (JobRepository), never hydrated. */
 #[ORM\Entity]
 #[ORM\Table(name: 'jobs')]
 #[ORM\Index(name: 'idx_jobs_run_status', columns: ['run_id', 'status'])]

@@ -14,12 +14,4 @@ enum JobOutcome: string
     case IdempotentSkip = 'idempotent_skip';
     case SoldDuringRun = 'sold_during_run';
     case Unexpected = 'unexpected';
-
-    public function isRetryable(): bool
-    {
-        return match ($this) {
-            self::Http429, self::Http5xx, self::Timeout, self::LockConflict, self::Unexpected => true,
-            default => false,
-        };
-    }
 }
