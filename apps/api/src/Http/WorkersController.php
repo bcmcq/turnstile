@@ -37,6 +37,10 @@ final class WorkersController
     #[Route('/scale', name: 'api_workers_scale', methods: ['POST'])]
     public function scale(#[MapRequestPayload(acceptFormat: 'json')] ScaleInput $input): JsonResponse
     {
+        if ($this->autoscale->isEnabled()) {
+            $this->autoscale->setEnabled(false); // otherwise the next tick undoes the manual choice
+            $this->events->push('autoscale.toggled', ['enabled' => false]);
+        }
         try {
             $result = $this->scaler->scale($input->workers);
         } catch (ScalerException $e) {

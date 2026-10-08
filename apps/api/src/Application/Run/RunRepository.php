@@ -63,9 +63,10 @@ final readonly class RunRepository
         return 1 === $this->db->executeStatement('UPDATE runs SET status = ?' . $extra . ', updated_at = NOW() WHERE id = UUID_TO_BIN(?)' . $guard, $params);
     }
 
+    /** Only a still-dispatching run becomes running: a pause or cancel that landed mid-dispatch must survive this write. */
     public function markStarted(string $id, int $totalJobs): void
     {
-        $this->db->executeStatement('UPDATE runs SET status = ?, total_jobs = ?, started_at = NOW(), updated_at = NOW() WHERE id = UUID_TO_BIN(?)', [RunStatus::Running->value, $totalJobs, $id]);
+        $this->db->executeStatement('UPDATE runs SET status = IF(status = ?, ?, status), total_jobs = ?, started_at = NOW(), updated_at = NOW() WHERE id = UUID_TO_BIN(?)', [RunStatus::Dispatching->value, RunStatus::Running->value, $totalJobs, $id]);
     }
 
     /** @param array<string, int> $counters */

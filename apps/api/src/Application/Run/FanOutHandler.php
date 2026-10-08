@@ -38,6 +38,7 @@ final class FanOutHandler
         private readonly PlatformRepository $platforms,
         private readonly RunCounters $counters,
         private readonly EventRecorder $events,
+        private readonly RunFinalizer $finalizer,
         private readonly MessageBusInterface $bus,
     ) {
     }
@@ -49,6 +50,7 @@ final class FanOutHandler
             return;
         }
         $this->runs->setStatus($run->id, RunStatus::Dispatching);
+        $this->counters->reset($run->id);
         $this->events->push('run.dispatching', ['runId' => $run->id, 'number' => $run->number]);
 
         $targetCode = null === $run->targetPlatformId ? null : $this->platforms->byId($run->targetPlatformId)->code;
@@ -69,13 +71,16 @@ final class FanOutHandler
         }
         $total += $this->flush($run->id, $batch);
 
-        $this->counters->reset($run->id);
         $this->runs->markStarted($run->id, $total);
         $this->events->push('run.started', ['runId' => $run->id, 'number' => $run->number, 'type' => $run->type->value, 'totalJobs' => $total, 'sections' => implode(',', $run->selection->sections)]);
         if (0 === $total) {
             $this->runs->setStatus($run->id, RunStatus::Completed);
             $this->events->push('run.finished', ['runId' => $run->id, 'number' => $run->number, 'status' => RunStatus::Completed->value, 'completed' => 0, 'skipped' => 0, 'deadLettered' => 0, 'conflicts' => 0, 'soldDuringRun' => 0]);
+
+            return;
         }
+        // Workers skip the finalizer while total_jobs is still 0, so a run whose last job finished during dispatch is closed here.
+        $this->finalizer->check($run->id);
     }
 
     /**

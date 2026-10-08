@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Application\Job;
 
+use App\Application\Platform\ClientRateLimiter;
 use App\Application\Platform\PlatformClientRegistry;
 use App\Application\Platform\PlatformRepository;
 use App\Application\Platform\PlatformRow;
@@ -19,6 +20,7 @@ final readonly class JobContext
         public string $idempotencyKey,
         public PlatformClientRegistry $clients,
         public PlatformRepository $platforms,
+        public ClientRateLimiter $limiter,
     ) {
     }
 

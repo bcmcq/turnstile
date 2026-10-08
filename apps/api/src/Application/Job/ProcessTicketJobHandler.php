@@ -143,7 +143,7 @@ final class ProcessTicketJobHandler
             $step('limiter');
 
             // 4. Platform call(s).
-            $change = $this->appliers->for($action)->apply(new JobContext($run, $ticket, $key, $this->clients, $this->platforms));
+            $change = $this->appliers->for($action)->apply(new JobContext($run, $ticket, $key, $this->clients, $this->platforms, $this->limiter));
             $step('platform');
             $latencyMs = $steps['platform'];
             if (null !== $platformCode) {

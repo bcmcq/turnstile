@@ -26,6 +26,7 @@ final class TransferApplier implements ActionApplierInterface
         $ticket = $ctx->ticket;
 
         if (null !== $current && null !== $ticket->externalRef && $current->id !== $target->id) {
+            $ctx->limiter->acquire($current->code); // the handler only paid for the target platform
             $ctx->clientFor($current->code)->delist($ticket->externalRef, $ctx->idempotencyKey . ':delist');
         }
         if (null !== $current && $current->id === $target->id && null !== $ticket->externalRef) {
