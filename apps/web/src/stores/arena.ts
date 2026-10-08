@@ -26,6 +26,14 @@ export const useArenaStore = defineStore('arena', () => {
     return n + selectedTickets.value.size
   })
 
+  const selectionSummary = computed(() => {
+    const codes = [...selectedSections.value].map((id) => sectionById.value.get(id)?.code ?? String(id)).sort()
+    const parts: string[] = []
+    if (codes.length) parts.push(codes.length <= 4 ? `sections ${codes.join(', ')}` : `${codes.length} sections`)
+    if (selectedTickets.value.size) parts.push(`${selectedTickets.value.size} seat${selectedTickets.value.size === 1 ? '' : 's'}`)
+    return parts.length ? parts.join(' + ') : 'nothing'
+  })
+
   function setBootstrap(data: ArenaBootstrap): void {
     bootstrap.value = data
   }
@@ -71,7 +79,7 @@ export const useArenaStore = defineStore('arena', () => {
 
   return {
     bootstrap, seats, seatsError, loadSeats, sections, platforms, sectionById, platformById, platformByCode, seatCount, arenaSize,
-    selectedSections, selectedTickets, selectedSeatTotal,
+    selectedSections, selectedTickets, selectedSeatTotal, selectionSummary,
     setBootstrap, toggleSection, toggleTicket, setSections, clearSelection, platformColor,
   }
 })

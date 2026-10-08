@@ -267,5 +267,20 @@ export function useSeatAnimations(opts: SeatAnimationOptions) {
     if (ticking) gsap.ticker.remove(tick)
   })
 
-  return { draw, overlayCount: () => overlaid.size }
+  function overlayOf(i: number): 'in_flight' | 'retry_wait' | 'conflict' | 'failed' | null {
+    switch (overlay[i]) {
+      case Overlay.InFlight:
+        return 'in_flight'
+      case Overlay.RetryWait:
+        return 'retry_wait'
+      case Overlay.Conflict:
+        return 'conflict'
+      case Overlay.Failed:
+        return 'failed'
+      default:
+        return null
+    }
+  }
+
+  return { draw, overlayOf, overlayCount: () => overlaid.size }
 }

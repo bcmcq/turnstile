@@ -1,0 +1,103 @@
+import { reactive, ref, watch } from 'vue'
+import type { ArenaView } from '@/composables/useArenaCanvas'
+import { SpatialGrid } from '@/lib/spatialGrid'
+import type { SeatTable } from '@/lib/seatTable'
+import { useArenaStore } from '@/stores/arena'
+
+export interface HoverState {
+  index: number
+  /** CSS px within the canvas */
+  x: number
+  y: number
+}
+
+export interface ArenaInteractionOptions {
+  seats: () => SeatTable | null
+  view: ArenaView
+  toUnit: (sx: number, sy: number) => [number, number]
+  toScreen: (ux: number, uy: number) => [number, number]
+  requestFrame: () => void
+  arenaWidth: number
+  arenaHeight: number
+}
+
+const SECTION_PICK_UNITS = 14
+const LABEL_PICK_PX = 16
+
+/** Hover → nearest seat; click → seat, section label, or the section under the pointer. Shift adds. */
+export function useArenaInteraction(opts: ArenaInteractionOptions) {
+  const arena = useArenaStore()
+  const hover = ref<HoverState | null>(null)
+  const hoveredSection = ref<number | null>(null)
+  let grid: SpatialGrid | null = null
+  const state = reactive({ gridReady: false })
+
+  watch(
+    () => opts.seats(),
+    (seats) => {
+      grid = seats ? new SpatialGrid(seats, opts.arenaWidth, opts.arenaHeight) : null
+      state.gridReady = grid !== null
+    },
+    { immediate: true },
+  )
+
+  function seatPickRadius(): number {
+    // at least one seat pitch, or 6 CSS px, whichever is larger in unit space
+    return Math.max(2, 6 / opts.view.scale)
+  }
+
+  function labelAt(sx: number, sy: number): number | null {
+    for (const s of arena.sections) {
+      if (s.tier === 'floor') continue
+      const [lx, ly] = opts.toScreen(s.geometry.labelX, s.geometry.labelY)
+      if (Math.abs(lx - sx) <= LABEL_PICK_PX && Math.abs(ly - sy) <= LABEL_PICK_PX * 0.7) return s.id
+    }
+    return null
+  }
+
+  function onPointerMove(sx: number, sy: number): void {
+    if (!grid) return
+    const [ux, uy] = opts.toUnit(sx, sy)
+    const i = grid.nearest(ux, uy, seatPickRadius())
+    const next: HoverState | null = i >= 0 ? { index: i, x: sx, y: sy } : null
+    const label = i >= 0 ? null : labelAt(sx, sy)
+    const changed = (hover.value?.index ?? -1) !== (next?.index ?? -1) || hoveredSection.value !== label
+    hover.value = next
+    hoveredSection.value = label
+    if (changed) opts.requestFrame()
+  }
+
+  function onPointerLeave(): void {
+    if (hover.value || hoveredSection.value !== null) {
+      hover.value = null
+      hoveredSection.value = null
+      opts.requestFrame()
+    }
+  }
+
+  /** Called on a click that was not a drag. */
+  function onClick(sx: number, sy: number, additive: boolean): void {
+    const seats = opts.seats()
+    if (!grid || !seats) return
+    const label = labelAt(sx, sy)
+    if (label !== null) {
+      arena.toggleSection(label, additive)
+      opts.requestFrame()
+      return
+    }
+    const [ux, uy] = opts.toUnit(sx, sy)
+    const seat = grid.nearest(ux, uy, seatPickRadius())
+    if (seat >= 0) {
+      arena.toggleTicket(seats.ticketId[seat], additive)
+      opts.requestFrame()
+      return
+    }
+    const near = grid.nearest(ux, uy, SECTION_PICK_UNITS)
+    if (near >= 0) {
+      arena.toggleSection(seats.sectionId[near], additive)
+      opts.requestFrame()
+    }
+  }
+
+  return { hover, hoveredSection, onPointerMove, onPointerLeave, onClick, state }
+}
