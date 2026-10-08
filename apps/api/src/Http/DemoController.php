@@ -28,8 +28,8 @@ final class DemoController
         $r = $redis->get();
         // Not the events stream: deleting it would drop the publisher's consumer group.
         foreach (['run:*', 'worker:*:completions', 'platform:*:stats', 'webhook_conflicts', 'autoscale:last_decision'] as $pattern) {
-            foreach ($r->keys($pattern) as $key) {
-                $r->del(substr((string) $key, \strlen('turnstile:')));
+            foreach ($redis->scanKeys($pattern) as $key) {
+                $r->del($key);
             }
         }
         // Queued messages from before the reset would collide with the re-numbered jobs. Trim the streams

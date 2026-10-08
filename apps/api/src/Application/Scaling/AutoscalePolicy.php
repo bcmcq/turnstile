@@ -37,9 +37,17 @@ final class AutoscalePolicy
     ) {
     }
 
+    /** On unless someone switched it off: the demo should scale by itself from the first run. */
     public function isEnabled(): bool
     {
-        return '1' === $this->redis->get()->get('autoscale:enabled');
+        return '0' !== $this->redis->get()->get('autoscale:enabled');
+    }
+
+    public function state(): AutoscaleState
+    {
+        $decision = $this->redis->get()->get('autoscale:last_decision');
+
+        return new AutoscaleState($this->isEnabled(), self::MIN, self::MAX, \is_string($decision) ? $decision : null);
     }
 
     public function setEnabled(bool $enabled): void

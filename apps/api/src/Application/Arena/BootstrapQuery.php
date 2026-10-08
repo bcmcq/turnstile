@@ -8,6 +8,7 @@ use App\Application\Arena\Dto\ArenaBootstrap;
 use App\Application\Arena\Dto\PlatformView;
 use App\Application\Arena\Dto\SectionView;
 use App\Application\Run\RunRepository;
+use App\Application\Scaling\AutoscalePolicy;
 use App\Domain\Platform\PlatformCode;
 use App\Domain\Venue\SectionStatus;
 use App\Domain\Venue\SectionTier;
@@ -15,8 +16,11 @@ use Doctrine\DBAL\Connection;
 
 final readonly class BootstrapQuery
 {
-    public function __construct(private Connection $db, private RunRepository $runs)
-    {
+    public function __construct(
+        private readonly Connection $db,
+        private readonly RunRepository $runs,
+        private readonly AutoscalePolicy $autoscale,
+    ) {
     }
 
     public function __invoke(): ArenaBootstrap
@@ -59,7 +63,7 @@ final readonly class BootstrapQuery
             ticketCounts: array_map(intval(...), $byStatus),
             listedByPlatform: array_map(intval(...), $byPlatform),
             currentRunId: ($this->runs->active() ?? $this->runs->latest())?->id,
-            autoscaleEnabled: false, // phase 5
+            autoscaleEnabled: $this->autoscale->isEnabled(),
         );
     }
 }

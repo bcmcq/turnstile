@@ -12,7 +12,6 @@ use App\Application\Realtime\Dto\PlatformGauge;
 use App\Application\Run\RunRepository;
 use App\Application\Run\RunViewFactory;
 use App\Application\Scaling\AutoscalePolicy;
-use App\Infrastructure\Redis\RedisFactory;
 use Doctrine\DBAL\Connection;
 
 /** Assembles a MetricsSnapshot from MySQL, Redis and the limiter state. Used by the publisher and GET /api/metrics. */
@@ -26,8 +25,8 @@ final class SnapshotBuilder
         private readonly PlatformStats $platformStats,
         private readonly ClientRateLimiter $limiter,
         private readonly WorkerRegistry $workers,
-        private readonly RedisFactory $redis,
         private readonly Connection $db,
+        private readonly AutoscalePolicy $autoscale,
     ) {
     }
 
@@ -62,9 +61,6 @@ final class SnapshotBuilder
             );
         }
 
-        $redis = $this->redis->get();
-        $decision = $redis->get('autoscale:last_decision');
-
         return new MetricsSnapshot(
             ts: (int) (microtime(true) * 1000),
             run: null === $run ? null : $this->runViews->make($run),
@@ -74,7 +70,7 @@ final class SnapshotBuilder
             series: $series,
             platforms: $gauges,
             workers: $this->workers->all(),
-            autoscale: ['enabled' => '1' === $redis->get('autoscale:enabled'), 'min' => AutoscalePolicy::MIN, 'max' => AutoscalePolicy::MAX, 'lastDecision' => \is_string($decision) ? $decision : null],
+            autoscale: $this->autoscale->state(),
         );
     }
 }

@@ -18,18 +18,7 @@ final class WorkerRegistry
     public function all(): array
     {
         $redis = $this->redis->get();
-        $prefix = 'turnstile:';
-        $keys = [];
-        $it = null;
-        do {
-            /** @var array<int, string>|false $batch */
-            $batch = $redis->scan($it, $prefix . 'worker:*', 200);
-            foreach (\is_array($batch) ? $batch : [] as $k) {
-                if (!str_ends_with($k, ':completions') && !str_contains($k, ':names')) {
-                    $keys[] = substr($k, \strlen($prefix));
-                }
-            }
-        } while ($it > 0);
+        $keys = array_filter($this->redis->scanKeys('worker:*'), static fn (string $k): bool => !str_ends_with($k, ':completions') && !str_contains($k, ':names'));
 
         $now = microtime(true);
         $workers = [];
