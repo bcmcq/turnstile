@@ -66,6 +66,11 @@ final readonly class ListingSoldHandler
                 $outcome = WebhookOutcome::IgnoredAlreadySold;
                 break;
             }
+            // A platform may only sell what it is currently listing; anything else is a forged or stale delivery.
+            if (TicketStatus::Listed !== $ticket->status || $ticket->platformId !== $platform->id) {
+                $outcome = WebhookOutcome::Invalid;
+                break;
+            }
             if ($this->tickets->apply($ticket, TicketChange::status(TicketStatus::Sold), null)) {
                 $this->events->push('ticket.updated', ['ticketId' => $ticket->id, 'sectionId' => $ticket->sectionId, 'state' => TicketStatus::Sold->code(), 'platformId' => $ticket->platformId, 'priceCents' => $soldPrice ?? $ticket->priceCents, 'runId' => null]);
                 $this->events->push('webhook.received', ['platform' => $code->value, 'ticketId' => $ticket->id, 'event' => $event, 'soldPriceCents' => $soldPrice, 'conflictRetried' => $i > 0]);

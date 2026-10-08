@@ -14,6 +14,7 @@ use App\Domain\Job\JobStatus;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpKernel\Attribute\MapQueryParameter;
 use Symfony\Component\HttpKernel\Attribute\MapRequestPayload;
+use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Symfony\Component\Routing\Attribute\Route;
 
@@ -28,7 +29,7 @@ final class RunController
     }
 
     #[Route('', name: 'api_runs_start', methods: ['POST'])]
-    public function start(#[MapRequestPayload] StartRunRequest $request, RunStarter $starter): JsonResponse
+    public function start(#[MapRequestPayload(acceptFormat: 'json')] StartRunRequest $request, RunStarter $starter): JsonResponse
     {
         return new JsonResponse($this->views->make($starter->start($request)), 202);
     }
@@ -75,7 +76,8 @@ final class RunController
     public function jobs(string $id, #[MapQueryParameter] ?string $status = null, #[MapQueryParameter] int $limit = 50, #[MapQueryParameter] int $offset = 0): JsonResponse
     {
         $this->runs->find($id) ?? throw new NotFoundHttpException('run not found');
+        $jobStatus = null === $status ? null : (JobStatus::tryFrom($status) ?? throw new BadRequestHttpException('unknown job status'));
 
-        return new JsonResponse($this->jobs->listByRun($id, null === $status ? null : JobStatus::from($status), min(500, max(1, $limit)), max(0, $offset)));
+        return new JsonResponse($this->jobs->listByRun($id, $jobStatus, min(500, max(1, $limit)), max(0, $offset)));
     }
 }

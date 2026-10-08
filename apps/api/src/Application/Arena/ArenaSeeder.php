@@ -67,10 +67,10 @@ final class ArenaSeeder
             $counts[$sectionId] = ($counts[$sectionId] ?? 0) + 1;
             $face = $section->tier->faceValueCents();
             $seatRows[] = \sprintf(
-                "(%d,%d,'%s',%d,'%s',%d,%d,'%s')",
+                "(%d,%d,%s,%d,'%s',%d,%d,'%s')",
                 $id,
                 $sectionId,
-                $seat->rowLabel,
+                $this->db->quote($seat->rowLabel),
                 $seat->seatNumber,
                 $seat->type->value,
                 (int) round($seat->x * 10),
