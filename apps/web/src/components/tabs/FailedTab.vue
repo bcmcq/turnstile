@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { api } from '@/api/client'
 import type { JobRow } from '@/api/types'
 import JobTracePopover from '@/components/tabs/JobTracePopover.vue'
