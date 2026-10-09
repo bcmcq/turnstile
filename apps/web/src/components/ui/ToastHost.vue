@@ -6,7 +6,7 @@ const tone = { error: 'border-fail/40 bg-fail/10 text-fail', info: 'border-borde
 </script>
 
 <template>
-  <div class="pointer-events-none fixed right-5 bottom-5 z-50 flex w-80 flex-col gap-2">
+  <div class="pointer-events-none fixed right-5 bottom-5 z-50 flex w-80 flex-col gap-2" aria-live="polite">
     <div v-for="t in store.toasts" :key="t.id" class="pointer-events-auto rounded-lg border px-3 py-2 text-xs shadow-lg" :class="tone[t.kind]">
       <div class="flex items-start justify-between gap-2">
         <span class="font-medium">{{ t.text }}</span>

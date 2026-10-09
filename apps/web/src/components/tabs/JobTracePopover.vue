@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { api } from '@/api/client'
 import type { JobDetail, JobOutcome } from '@/api/types'
 import Button from '@/components/ui/Button.vue'
@@ -22,13 +22,24 @@ const toasts = useToastsStore()
 const detail = ref<JobDetail | null>(null)
 const busy = ref(false)
 
+let alive = true
+function onKey(e: KeyboardEvent): void {
+  if (e.key === 'Escape') emit('close')
+}
 onMounted(async () => {
+  document.addEventListener('keydown', onKey)
   try {
+    if (props.jobId === undefined && props.ticketId === undefined) throw new Error('trace needs a job or a ticket')
     detail.value = props.jobId !== undefined ? await api.job(props.jobId) : await api.ticketJob(props.ticketId ?? 0)
   } catch (e) {
+    if (!alive) return
     toasts.fromError(e)
     emit('close')
   }
+})
+onBeforeUnmount(() => {
+  alive = false
+  document.removeEventListener('keydown', onKey)
 })
 
 const target = computed(() => {
@@ -107,7 +118,7 @@ async function retry(): Promise<void> {
 </script>
 
 <template>
-  <div class="absolute inset-x-2 bottom-2 z-20 rounded-xl border border-border bg-panel-2 p-4 shadow-[0_12px_30px_rgba(0,0,0,0.5)]">
+  <div role="dialog" aria-label="Retry trace" class="absolute inset-x-2 bottom-2 z-20 rounded-xl border border-border bg-panel-2 p-4 shadow-[0_12px_30px_rgba(0,0,0,0.5)]">
     <div class="flex items-center justify-between">
       <span class="text-sm font-semibold">Retry trace · {{ detail ? `job ${detail.job.id}` : 'loading…' }}</span>
       <button type="button" class="text-muted hover:text-fg" aria-label="Close" @click="emit('close')">×</button>

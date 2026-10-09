@@ -7,8 +7,8 @@ defineProps<{
 </script>
 
 <template>
-  <div class="flex flex-col gap-1.5">
+  <label class="flex flex-col gap-1.5">
     <Label :text="label" />
     <slot />
-  </div>
+  </label>
 </template>

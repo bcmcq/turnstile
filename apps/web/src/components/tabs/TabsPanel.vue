@@ -46,11 +46,13 @@ async function retryAll(): Promise<void> {
 <template>
   <Panel class="relative flex-1 overflow-hidden">
     <template #header>
-      <div class="flex w-full items-center gap-1">
+      <div class="flex w-full items-center gap-1" role="tablist">
         <button
           v-for="t in tabs"
           :key="t.id"
           type="button"
+          role="tab"
+          :aria-selected="active === t.id"
           class="flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs transition focus:outline-none focus-visible:ring-2 focus-visible:ring-tixhub/60"
           :class="active === t.id ? 'bg-panel-2 font-semibold text-fg' : 'font-medium text-muted hover:bg-panel-2/60 hover:text-fg'"
           @click="active = t.id"

@@ -36,11 +36,20 @@ function selectTier(tier: SectionTier): void {
   arena.setSections(all ? [...arena.selectedSections].filter((id) => !ids.includes(id)) : [...new Set([...arena.selectedSections, ...ids])])
   arena.focusSections([...arena.selectedSections])
 }
+function onDocumentKey(e: KeyboardEvent): void {
+  if (e.key === 'Escape') open.value = false
+}
 function onDocumentClick(e: MouseEvent): void {
   if (open.value && root.value && !root.value.contains(e.target as Node)) open.value = false
 }
-onMounted(() => document.addEventListener('mousedown', onDocumentClick))
-onBeforeUnmount(() => document.removeEventListener('mousedown', onDocumentClick))
+onMounted(() => {
+  document.addEventListener('mousedown', onDocumentClick)
+  document.addEventListener('keydown', onDocumentKey)
+})
+onBeforeUnmount(() => {
+  document.removeEventListener('mousedown', onDocumentClick)
+  document.removeEventListener('keydown', onDocumentKey)
+})
 </script>
 
 <template>
@@ -50,12 +59,15 @@ onBeforeUnmount(() => document.removeEventListener('mousedown', onDocumentClick)
       :disabled="props.disabled"
       class="flex w-full items-center justify-between rounded-lg border border-border bg-panel-2 px-3 py-2 text-left text-[13px] font-medium transition hover:border-muted focus:outline-none focus-visible:ring-2 focus-visible:ring-tixhub/60 disabled:cursor-not-allowed disabled:opacity-50"
       :class="open ? 'border-tixhub/60' : ''"
+      aria-haspopup="dialog"
+      :aria-expanded="open"
       @click="open = !open"
+      @keydown.escape="open = false"
     >
       <span class="truncate">{{ summary }}</span>
       <span class="ml-2 text-xs text-muted">▾</span>
     </button>
-    <div v-if="open" class="absolute bottom-full left-0 z-20 mb-2 w-[360px] rounded-xl border border-border bg-panel p-3 shadow-[0_12px_30px_rgba(0,0,0,0.5)]">
+    <div v-if="open" role="dialog" aria-label="Pick sections" class="absolute bottom-full left-0 z-20 mb-2 w-[360px] rounded-xl border border-border bg-panel p-3 shadow-[0_12px_30px_rgba(0,0,0,0.5)]">
       <div class="mb-2 flex items-center justify-between text-[11px]">
         <span class="text-muted">Click to toggle · also click sections on the map</span>
         <button type="button" class="text-muted hover:text-fg" @click="arena.clearSelection()">Clear</button>
