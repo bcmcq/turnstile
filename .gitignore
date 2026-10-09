@@ -22,3 +22,7 @@ apps/web/dist/
 
 # docker
 docker/**/.cache/
+
+# recordings
+*.mp4
+*.mov
