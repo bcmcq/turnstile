@@ -12,7 +12,6 @@ namespace Scaler;
  */
 final class Docker
 {
-    /** @param string[] $cmd */
     private function __construct(
         private readonly string $project,
         private readonly string $service,
@@ -135,7 +134,8 @@ final class Docker
      */
     private function run(array $args): array
     {
-        $cmd = 'docker '.implode(' ', array_map(escapeshellarg(...), $args)).' 2>&1';
+        // A wedged daemon must not pin the scaler lock forever; 60 s covers a slow `docker run` on a cold image.
+        $cmd = 'timeout 60 docker '.implode(' ', array_map(escapeshellarg(...), $args)).' 2>&1';
         exec($cmd, $output, $code);
         if (0 !== $code) {
             throw new \RuntimeException(sprintf('docker %s failed (%d): %s', $args[0], $code, implode(' ', $output)));

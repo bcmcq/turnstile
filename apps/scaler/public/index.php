@@ -32,11 +32,13 @@ try {
             $respond(422, ['error' => 'body must be {"workers": n}']);
         }
         // Accept and return at once; bin/scale.php does the docker work in the background (logs go to the container's stderr).
+        // The target file is replaced atomically, so overlapping requests collapse to the newest value.
         $target = max(1, min($docker->max, $target));
         $running = \count(array_filter($docker->workers(), static fn (array $w): bool => 'running' === $w['state']));
-        $cmd = sprintf('php %s %d >> /proc/1/fd/2 2>&1 &', escapeshellarg(__DIR__.'/../bin/scale.php'), $target);
-        exec($cmd);
-        $respond(202, ['target' => $target, 'before' => $running, 'after' => $target, 'accepted' => true, 'workers' => $docker->workers()]);
+        file_put_contents('/tmp/scaler.target.tmp', (string) $target);
+        rename('/tmp/scaler.target.tmp', '/tmp/scaler.target');
+        exec(sprintf('php %s >> /proc/1/fd/2 2>&1 &', escapeshellarg(__DIR__.'/../bin/scale.php')));
+        $respond(202, ['target' => $target, 'before' => $running, 'accepted' => true, 'workers' => $docker->workers()]);
     }
     $respond(404, ['error' => 'no_route']);
 } catch (Throwable $e) {
