@@ -140,6 +140,7 @@ function onKey(e: KeyboardEvent): void {
 }
 function onBlur(): void {
   shiftHeld.value = false
+  pick.cancelBox()
 }
 onMounted(() => {
   window.addEventListener('keydown', onKey)
@@ -150,6 +151,7 @@ onBeforeUnmount(() => {
   window.removeEventListener('keydown', onKey)
   window.removeEventListener('keyup', onKey)
   window.removeEventListener('blur', onBlur)
+  gsap.killTweensOf(wash)
 })
 const cursorClass = computed(() => (pick.box.value || shiftHeld.value ? 'cursor-crosshair' : 'cursor-grab active:cursor-grabbing'))
 
@@ -186,6 +188,11 @@ function onUp(e: PointerEvent): void {
   if (dragged || e.button !== 0) return
   const [x, y] = canvasPoint(e)
   pick.onClick(x, y, e.shiftKey)
+}
+
+function onCancel(): void {
+  pick.cancelBox()
+  map.onPointerUp()
 }
 
 /** Right-click a seat: attempt trace of the latest job that touched it. */
@@ -256,7 +263,6 @@ watch([() => arena.selectedSections, () => arena.selectedTickets, () => run.isAc
 
 const zoomLabel = computed(() => `${Math.round((map.view.scale / map.view.fitScale) * 100)}%`)
 
-defineExpose({ map })
 </script>
 
 <template>
@@ -269,7 +275,7 @@ defineExpose({ map })
       @pointerdown="onDown"
       @pointermove="onMove"
       @pointerup="onUp"
-      @pointercancel="map.onPointerUp"
+      @pointercancel="onCancel"
       @pointerleave="pick.onPointerLeave"
       @dblclick="map.fit(true)"
       @contextmenu="onContextMenu"

@@ -6,6 +6,8 @@ export interface MercureHandlers {
   seats: (batch: SeatsBatch) => void
   log: (batch: LogBatch) => void
   run: (update: RunTopic) => void
+  /** The stream came back after an outage; seat updates sent meanwhile are gone, so the caller reloads. */
+  reconnected: () => void
 }
 
 const TOPICS = ['turnstile/metrics', 'turnstile/seats', 'turnstile/log', 'turnstile/run'] as const
@@ -14,8 +16,6 @@ const BACKOFF_MS = [1_000, 2_000, 4_000, 8_000] as const
 /** One EventSource for all four topics. The publisher names each SSE event after its topic suffix. */
 export function useMercure(handlers: MercureHandlers) {
   const connected = ref(false)
-  const lastEventAt = ref<number | null>(null)
-  const eventsReceived = ref(0)
   let source: EventSource | null = null
   let attempt = 0
   let reconnectTimer: ReturnType<typeof setTimeout> | null = null
@@ -28,8 +28,6 @@ export function useMercure(handlers: MercureHandlers) {
 
   function listen<T>(name: keyof MercureHandlers, handle: (data: T) => void): void {
     source?.addEventListener(name, (e: MessageEvent<string>) => {
-      lastEventAt.value = Date.now()
-      eventsReceived.value += 1
       try {
         handle(JSON.parse(e.data) as T)
       } catch (err) {
@@ -43,6 +41,7 @@ export function useMercure(handlers: MercureHandlers) {
     source = new EventSource(url())
     source.onopen = () => {
       connected.value = true
+      if (attempt > 0) handlers.reconnected()
       attempt = 0
     }
     source.onerror = () => {
@@ -69,5 +68,5 @@ export function useMercure(handlers: MercureHandlers) {
 
   onBeforeUnmount(disconnect)
 
-  return { connected: readonly(connected), lastEventAt: readonly(lastEventAt), eventsReceived: readonly(eventsReceived), connect, disconnect }
+  return { connected: readonly(connected), connect, disconnect }
 }

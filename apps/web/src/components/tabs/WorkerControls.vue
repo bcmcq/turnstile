@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, onBeforeUnmount, ref } from 'vue'
 import { api } from '@/api/client'
 import Toggle from '@/components/ui/Toggle.vue'
 import { useMetricsStore } from '@/stores/metrics'
@@ -10,6 +10,10 @@ const toasts = useToastsStore()
 const busy = ref(false)
 /** Target we last asked for; cards catch up as heartbeats arrive, so show it until they do. */
 const pending = ref<number | null>(null)
+let settle: ReturnType<typeof setTimeout> | null = null
+onBeforeUnmount(() => {
+  if (settle) clearTimeout(settle)
+})
 
 const live = computed(() => metrics.workers.length)
 const shown = computed(() => pending.value ?? live.value)
@@ -24,7 +28,8 @@ async function scale(delta: number): Promise<void> {
   try {
     const r = await api.scaleWorkers(target)
     toasts.push('info', `${r.before} → ${r.target} workers · ${delta > 0 ? 'cloning containers' : 'stopping newest, in-flight jobs finish first'} · cards follow the heartbeats`)
-    setTimeout(() => (pending.value = null), 12_000)
+    if (settle) clearTimeout(settle)
+    settle = setTimeout(() => (pending.value = null), 12_000)
   } catch (e) {
     pending.value = null
     toasts.fromError(e)

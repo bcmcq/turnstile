@@ -62,8 +62,16 @@ export function useArenaCanvas(opts: ArenaCanvasOptions) {
   function fit(animated = false): void {
     const el = opts.container.value
     if (!el) return
-    // a layout shift mid-tween (the first data load resizes the panel) retargets the tween instead of snapping
-    const live = gsap.getTweensOf(view)[0]
+    // a layout shift during the pull-back (the first data load resizes the panel) retargets it instead of snapping;
+    // any other live tween (a section zoom) is left alone so a resize cannot hijack it
+    const live = pullingBack ? gsap.getTweensOf(view)[0] : undefined
+    if (!pullingBack && gsap.isTweening(view)) {
+      view.width = el.clientWidth
+      view.height = el.clientHeight
+      view.fitScale = Math.min(view.width / opts.arenaWidth, view.height / opts.arenaHeight)
+      resizeCanvases()
+      return
+    }
     gsap.killTweensOf(view)
     view.width = el.clientWidth
     view.height = el.clientHeight
@@ -104,12 +112,15 @@ export function useArenaCanvas(opts: ArenaCanvasOptions) {
   }
 
   /** Jump in on the floor and ease back out to the fit; paced to the seat reveal wave. */
+  let pullingBack = false
   function pullBack(factor = 1.2, duration = 2): void {
     const centred = (scale: number): [number, number] => [(view.width - opts.arenaWidth * scale) / 2, (view.height - opts.arenaHeight * scale) / 2]
     gsap.killTweensOf(view)
     view.scale = view.fitScale * factor
     ;[view.offsetX, view.offsetY] = centred(view.scale)
+    pullingBack = true
     animateView(view.fitScale, ...centred(view.fitScale), duration, 'expo.out')
+    gsap.getTweensOf(view)[0]?.eventCallback('onComplete', () => (pullingBack = false))
   }
 
   /** Zoom so the given arena-unit box fills the panel with some padding, capped at max zoom. */
@@ -333,7 +344,10 @@ export function useArenaCanvas(opts: ArenaCanvasOptions) {
     if (opts.container.value) observer.observe(opts.container.value)
   })
 
-  onBeforeUnmount(() => observer?.disconnect())
+  onBeforeUnmount(() => {
+    observer?.disconnect()
+    gsap.killTweensOf(view)
+  })
 
   return { view, toUnit, toScreen, seatPx, fit, pullBack, zoomIn, zoomOut, zoomToBounds, invalidate, markSeatsDirty, requestFrame, onWheel, onPointerDown, onPointerMove, onPointerUp }
 }

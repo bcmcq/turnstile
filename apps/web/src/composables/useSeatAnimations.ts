@@ -564,5 +564,5 @@ export function useSeatAnimations(opts: SeatAnimationOptions) {
     }
   }
 
-  return { draw, overlayOf, revealSeats, revealClip, overlayCount: () => overlaid.size }
+  return { draw, overlayOf, revealSeats, revealClip }
 }

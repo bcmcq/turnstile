@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue'
 import Label from '@/components/ui/Label.vue'
+import { COLORS } from '@/lib/arenaPalette'
 import { fmtPct } from '@/lib/format'
 
 const props = defineProps<{
@@ -11,7 +12,11 @@ const emit = defineEmits<{
   commit: [value: number]
 }>()
 const local = ref(props.modelValue)
-watch(() => props.modelValue, (v) => (local.value = v))
+const dragging = ref(false)
+// the store value follows the metrics stream; it must not move the thumb while the user holds it
+watch(() => props.modelValue, (v) => {
+  if (!dragging.value) local.value = v
+})
 </script>
 
 <template>
@@ -28,7 +33,11 @@ watch(() => props.modelValue, (v) => (local.value = v))
       :value="local"
       :disabled="props.disabled"
       class="range-slider h-4 w-full"
-      :style="{ '--pct': `${local * 100}%`, '--c': local > 0.3 ? '#f87171' : '#fb923c' }"
+      :style="{ '--pct': `${local * 100}%`, '--c': local > 0.3 ? COLORS.fail : COLORS.inflight }"
+      aria-label="Chaos: share of vendor calls that fail"
+      @pointerdown="dragging = true"
+      @pointerup="dragging = false"
+      @pointercancel="dragging = false"
       @input="local = Number(($event.target as HTMLInputElement).value)"
       @change="emit('commit', Number(($event.target as HTMLInputElement).value))"
     />

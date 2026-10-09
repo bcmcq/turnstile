@@ -1,4 +1,4 @@
-import { reactive, ref, watch } from 'vue'
+import { ref, watch } from 'vue'
 import type { ArenaView } from '@/composables/useArenaCanvas'
 import { SpatialGrid } from '@/lib/spatialGrid'
 import type { SeatTable } from '@/lib/seatTable'
@@ -39,13 +39,11 @@ export function useArenaInteraction(opts: ArenaInteractionOptions) {
   const hoveredSection = ref<number | null>(null)
   const box = ref<BoxState | null>(null)
   let grid: SpatialGrid | null = null
-  const state = reactive({ gridReady: false })
 
   watch(
     () => opts.seats(),
     (seats) => {
       grid = seats ? new SpatialGrid(seats, opts.arenaWidth, opts.arenaHeight) : null
-      state.gridReady = grid !== null
     },
     { immediate: true },
   )
@@ -118,6 +116,13 @@ export function useArenaInteraction(opts: ArenaInteractionOptions) {
     opts.requestFrame()
   }
 
+  /** Pointer capture lost (tab switch, window blur): drop the box without selecting. */
+  function cancelBox(): void {
+    if (!box.value) return
+    box.value = null
+    opts.requestFrame()
+  }
+
   /** Select every seat inside the box; a box smaller than a few pixels is treated as a click. */
   function endBox(additive: boolean): boolean {
     const b = box.value
@@ -150,5 +155,5 @@ export function useArenaInteraction(opts: ArenaInteractionOptions) {
     return seat >= 0 ? seats.ticketId[seat] : null
   }
 
-  return { hover, hoveredSection, box, onPointerMove, onPointerLeave, onClick, beginBox, updateBox, endBox, seatAt, state }
+  return { hover, hoveredSection, box, onPointerMove, onPointerLeave, onClick, beginBox, updateBox, endBox, cancelBox, seatAt }
 }

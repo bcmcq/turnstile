@@ -15,7 +15,6 @@ export function useDashboard() {
   const log = useLogStore()
   const ready = ref(false)
   const error = ref<string | null>(null)
-  const onReset = ref<(() => void) | null>(null)
 
   const mercure = useMercure({
     metrics: (s) => {
@@ -27,13 +26,16 @@ export function useDashboard() {
       log.push(b.events)
       liveBus.emit('log', b.events)
     },
+    reconnected: () => {
+      void arena.loadSeats()
+      void api.metrics().then((s) => metrics.set(s))
+    },
     run: (u) => {
       if ('reset' in u) {
         run.set(null)
         log.clear()
         void arena.loadSeats()
         liveBus.emit('reset', undefined)
-        onReset.value?.()
       } else {
         run.set(u)
       }
@@ -48,16 +50,16 @@ export function useDashboard() {
       run.set(snap.run)
       ready.value = true
       error.value = null
+      // stream first, then the seats snapshot: anything that changes while the snapshot loads is either in it
+      // or arrives on the stream afterwards, so nothing is lost in the gap
+      mercure.connect()
       void arena.loadSeats()
     } catch (e) {
       error.value = e instanceof Error ? e.message : String(e)
     }
   }
 
-  onMounted(async () => {
-    await load()
-    mercure.connect()
-  })
+  onMounted(load)
 
-  return { ready, error, connected: mercure.connected, eventsReceived: mercure.eventsReceived, reload: load, onReset }
+  return { ready, error, connected: mercure.connected }
 }
