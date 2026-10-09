@@ -2,9 +2,9 @@
 
 A bulk ticket sync engine. One bulk action on a 4,280-seat arena fans out into thousands of jobs, a pool of PHP workers pushes them to three flaky mock marketplaces, and a Vue dashboard shows every seat, worker and retry live.
 
-It exists to show how I handle async workloads: fan-out, retries with backoff, per-platform rate limiting, idempotency, optimistic locking, dead letters with retry, and horizontal worker scaling (manual and automatic) with honest throughput numbers.
+It exists to show how to handle async workloads: fan-out, retries with backoff, per-platform rate limiting, idempotency, optimistic locking, dead letters with retry, and horizontal worker scaling (manual and automatic) with honest throughput numbers.
 
-**How it was built:** With Claude Code doing most of the typing, over about 2 days. The architecture, the six guarantees below, the tradeoffs below, and the review of every change were mine; the code was read, run, and fixed by me. I’m happy to walk through any file.
+**How it was built:** With Claude Code doing most of the typing, over about 2 days. The architecture, the hard parts and tradeoffs below, and the review of every change were mine; the code was read, run, and fixed by me. I’m happy to walk through any file.
 
 ## Run it
 
@@ -75,7 +75,7 @@ Two data paths. MySQL is the truth: runs, jobs, attempts, tickets, the idempoten
 | `mysql`, `redis` | official | Storage |
 | `web` | `docker/web` | Vite dev server |
 
-## The six guarantees and where they live
+## The hard parts, and where each one lives
 
 1. **Fan-out.** `POST /api/runs` inserts one `runs` row and dispatches a single `RunStarted` message. [`FanOutHandler`](apps/api/src/Application/Run/FanOutHandler.php) bulk-inserts jobs 1,000 at a time and dispatches one `ProcessTicketJob` per ticket onto the stream for its platform. The HTTP request returns in milliseconds whether the run has 100 jobs or 100,000.
 
