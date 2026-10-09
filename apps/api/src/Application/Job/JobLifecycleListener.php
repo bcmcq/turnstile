@@ -33,6 +33,9 @@ final class JobLifecycleListener
     {
         $message = $event->getEnvelope()->getMessage();
         if ($message instanceof RunStarted) {
+            if ($event->willRetry()) {
+                return; // control transport retries it; FanOutHandler picks up a still-pending run
+            }
             // A fan-out that died mid-way left the run "dispatching" with a partial job set; a retry would return
             // early and the run would block every new one. Cancel it so the dispatched jobs drain and the UI moves on.
             try {

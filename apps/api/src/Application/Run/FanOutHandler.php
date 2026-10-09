@@ -54,7 +54,6 @@ final class FanOutHandler
         $this->events->push('run.dispatching', ['runId' => $run->id, 'number' => $run->number]);
 
         $targetCode = null === $run->targetPlatformId ? null : $this->platforms->byId($run->targetPlatformId)->code;
-        $nextId = $this->jobs->nextId();
         $total = 0;
         $batch = [];
 
@@ -63,7 +62,7 @@ final class FanOutHandler
                 break;
             }
             $platform = self::platformFor($run->actionType(), $targetCode, $currentPlatformCode);
-            $batch[] = ['id' => $nextId++, 'ticketId' => $ticketId, 'platformId' => null === $platform ? null : $this->platforms->byCode($platform)->id, 'platform' => $platform];
+            $batch[] = ['ticketId' => $ticketId, 'platformId' => null === $platform ? null : $this->platforms->byCode($platform)->id, 'platform' => $platform];
             if (self::BATCH === \count($batch)) {
                 $total += $this->flush($run->id, $batch);
                 $batch = [];
@@ -84,16 +83,16 @@ final class FanOutHandler
     }
 
     /**
-     * @param list<array{id: int, ticketId: int, platformId: int|null, platform: PlatformCode|null}> $batch
+     * @param list<array{ticketId: int, platformId: int|null, platform: PlatformCode|null}> $batch
      */
     private function flush(string $runId, array $batch): int
     {
         if ([] === $batch) {
             return 0;
         }
-        $this->jobs->bulkInsert($runId, array_map(static fn (array $b): array => ['id' => $b['id'], 'ticketId' => $b['ticketId'], 'platformId' => $b['platformId']], $batch));
+        $id = $this->jobs->bulkInsert($runId, array_map(static fn (array $b): array => ['ticketId' => $b['ticketId'], 'platformId' => $b['platformId']], $batch));
         foreach ($batch as $b) {
-            $job = new ProcessTicketJob($b['id'], $runId, $b['ticketId'], $b['platform']);
+            $job = new ProcessTicketJob($id++, $runId, $b['ticketId'], $b['platform']);
             $this->bus->dispatch($job, [new TransportNamesStamp([$job->transport()])]);
         }
 

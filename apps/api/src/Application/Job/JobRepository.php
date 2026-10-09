@@ -28,37 +28,36 @@ final readonly class JobRepository
     }
 
     /**
-     * @param list<array{id: int, ticketId: int, platformId: int|null}> $rows
+     * Ids come from AUTO_INCREMENT: a multi-row insert gets a consecutive block, so the first id names them all.
+     *
+     * @param list<array{ticketId: int, platformId: int|null}> $rows
+     *
+     * @return int id of the first row
      */
-    public function bulkInsert(string $runId, array $rows): void
+    public function bulkInsert(string $runId, array $rows): int
     {
         if ([] === $rows) {
-            return;
+            return 0;
         }
         $now = new \DateTimeImmutable()->format('Y-m-d H:i:s');
         $run = Uuid::fromString($runId)->toBinary();
         $values = [];
         $params = [];
         foreach ($rows as $row) {
-            $values[] = '(?, ?, ?, ?, ?, 0, 5, ?, ?)';
-            array_push($params, $row['id'], $run, $row['ticketId'], $row['platformId'], JobStatus::Queued->value, $now, $now);
+            $values[] = '(?, ?, ?, ?, 0, 5, ?, ?)';
+            array_push($params, $run, $row['ticketId'], $row['platformId'], JobStatus::Queued->value, $now, $now);
         }
-        $this->db->executeStatement('INSERT INTO jobs (id, run_id, ticket_id, platform_id, status, attempts, max_attempts, created_at, updated_at) VALUES ' . implode(',', $values), $params);
-    }
+        $this->db->executeStatement('INSERT INTO jobs (run_id, ticket_id, platform_id, status, attempts, max_attempts, created_at, updated_at) VALUES ' . implode(',', $values), $params);
 
-    public function nextId(): int
-    {
-        $max = $this->db->fetchOne('SELECT MAX(id) FROM jobs');
-
-        return (is_numeric($max) ? (int) $max : 0) + 1;
+        return (int) $this->db->lastInsertId();
     }
 
     /** @return int the attempt number */
     public function openAttempt(int $jobId, string $workerId): int
     {
-        $this->db->executeStatement('UPDATE jobs SET attempts = attempts + 1, status = ?, worker_id = ?, next_attempt_at = NULL, updated_at = NOW() WHERE id = ?', [JobStatus::InFlight->value, $workerId, $jobId]);
-        $attemptNo = $this->db->fetchOne('SELECT attempts FROM jobs WHERE id = ?', [$jobId]);
-        $attemptNo = is_numeric($attemptNo) ? (int) $attemptNo : 1;
+        // LAST_INSERT_ID(expr) hands the incremented value back on this connection, so no second SELECT can race it.
+        $this->db->executeStatement('UPDATE jobs SET attempts = LAST_INSERT_ID(attempts + 1), status = ?, worker_id = ?, next_attempt_at = NULL, updated_at = NOW() WHERE id = ?', [JobStatus::InFlight->value, $workerId, $jobId]);
+        $attemptNo = max(1, (int) $this->db->lastInsertId());
         $this->db->executeStatement('INSERT INTO job_attempts (job_id, attempt_no, worker_id, started_at) VALUES (?, ?, ?, NOW(3))', [$jobId, $attemptNo, $workerId]);
 
         return $attemptNo;

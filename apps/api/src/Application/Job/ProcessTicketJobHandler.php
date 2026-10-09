@@ -26,7 +26,6 @@ use App\Domain\Job\JobOutcome;
 use Doctrine\DBAL\Connection;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
-use Symfony\Component\Messenger\Exception\UnrecoverableMessageHandlingException;
 use Symfony\Component\Messenger\MessageBusInterface;
 use Symfony\Component\Messenger\Stamp\DelayStamp;
 use Symfony\Component\Messenger\Stamp\TransportNamesStamp;
@@ -197,9 +196,6 @@ final class ProcessTicketJobHandler
             throw $e->failure->isRetryable() ? new PlatformRetryableException($e) : new PlatformRejectedException($e);
         } catch (LockConflictException $e) {
             $this->failAttempt($job->id, $run->id, $ticket, $attemptNo, $job->maxAttempts, JobOutcome::LockConflict, null, $latencyMs, null, $e->getMessage(), true);
-            throw $e;
-        } catch (UnrecoverableMessageHandlingException $e) {
-            $this->failAttempt($job->id, $run->id, $ticket, $attemptNo, $job->maxAttempts, JobOutcome::Unexpected, null, $latencyMs, null, $e->getMessage(), false);
             throw $e;
         } catch (\Throwable $e) {
             $this->logger->error('job {job} attempt {attempt} crashed: {error}', ['job' => $job->id, 'attempt' => $attemptNo, 'error' => $e->getMessage(), 'exception' => $e]);
