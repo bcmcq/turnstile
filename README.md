@@ -26,8 +26,6 @@ cp .env.example .env   # then edit MAX_WORKERS
 
 Or for a single run: `MAX_WORKERS=8 docker compose up`.
 
-`ARENA_SIZE` picks how densely the arena is seeded: `demo` (default) is the 4,280-seat layout the design was drawn for, `full` is a roughly 49,000-seat crowd for stress-testing the canvas and the fan-out. The venue records which one it was seeded with, so the dashboard sizes its dots from the database. To switch later, edit `.env`, run `docker compose up -d` so the API picks up the new value, then press **Reset** on the dashboard (or `docker compose down -v` for a clean slate), because the seats are already in MySQL.
-
 To raise or lower it later, edit `.env` and run:
 
 ```bash
@@ -35,6 +33,8 @@ docker compose up -d
 ```
 
 Compose sees the changed env and recreates `api`, `worker`, `publisher` and `scaler`; MySQL and Redis stay up and keep their data. The stepper and Auto read the new ceiling from the API on the next snapshot, and the API answers a manual scale above it with a 422. If the scaler had started extra workers, `docker compose down` first gives you a clean pool.
+
+`ARENA_SIZE` picks how densely the arena is seeded: `demo` (default) is the 4,280-seat layout the design was drawn for, `full` is a roughly 49,000-seat crowd for stress-testing the canvas and the fan-out. The venue records which one it was seeded with, so the dashboard sizes its dots from the database. To switch later, edit `.env`, run `docker compose up -d` so the API picks up the new value, then press **Reset** on the dashboard (or `docker compose down -v` for a clean slate), because the seats are already in MySQL.
 
 | Port | What |
 |---|---|
