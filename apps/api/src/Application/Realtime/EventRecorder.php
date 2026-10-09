@@ -8,7 +8,7 @@ use App\Infrastructure\Redis\RedisFactory;
 
 /**
  * Workers never talk to Mercure. They append compact events to one Redis stream; the publisher
- * process folds the stream into batches every 250 ms (phase 3).
+ * process folds the stream into batches every 250 ms (Publisher).
  */
 final class EventRecorder
 {

@@ -6,7 +6,7 @@ namespace Mocks;
 
 /**
  * One fake marketplace. Three instances (tixhub, seatswap, passmarket) share this behavior but expose
- * different API shapes (see Router), the way three real vendors would.
+ * different API shapes (see the per-platform routes in public/index.php), the way three real vendors would.
  *
  * Request pipeline: auth → rate limit → idempotency replay → latency → chaos → execute → buyer snipe → cache.
  */

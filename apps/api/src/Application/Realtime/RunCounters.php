@@ -6,7 +6,7 @@ namespace App\Application\Realtime;
 
 use App\Infrastructure\Redis\RedisFactory;
 
-/** Per-run counters live in a Redis hash; the publisher writes them back to MySQL every 2 s. */
+/** Per-run counters live in a Redis hash; RunFinalizer writes the job counts to the runs row once the run ends. */
 final class RunCounters
 {
     /** Monotonic event counts. Status counts (queued, in_flight, retry_wait, …) come from the jobs table. */
