@@ -16,7 +16,7 @@ use Symfony\Component\Routing\Attribute\Route;
 final class DemoController
 {
     /** Truncate everything and rebuild the arena. The dashboard reloads its seats payload on run.reset. */
-    #[Route('/api/demo/reset', name: 'api_demo_reset', methods: ['POST'])]
+    #[Route('/api/demo/reset', name: 'api_demo_reset', methods: ['POST'], defaults: ['_admin' => true])]
     public function reset(ArenaSeeder $seeder, RunRepository $runs, PlatformRepository $platforms, RedisFactory $redis, EventRecorder $events): JsonResponse
     {
         if (null !== $runs->active()) {

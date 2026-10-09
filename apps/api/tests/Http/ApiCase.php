@@ -11,6 +11,8 @@ use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
 /** One client per test, the kernel kept between requests so every write lands in one transaction that is rolled back. */
 abstract class ApiCase extends WebTestCase
 {
+    /** Matches ADMIN_TOKEN in apps/api/.env; compose overrides it for a real deployment. */
+    protected const string ADMIN_TOKEN = 'turnstile-admin-demo-token';
     protected KernelBrowser $client;
     protected Connection $db;
 
@@ -33,7 +35,7 @@ abstract class ApiCase extends WebTestCase
     /** @param array<string, mixed> $body */
     protected function json(string $method, string $uri, array $body = [], string $origin = 'http://localhost:5173'): int
     {
-        $this->client->request($method, $uri, server: ['CONTENT_TYPE' => 'application/json', 'HTTP_ORIGIN' => $origin], content: json_encode($body, \JSON_THROW_ON_ERROR));
+        $this->client->request($method, $uri, server: ['CONTENT_TYPE' => 'application/json', 'HTTP_ORIGIN' => $origin, 'HTTP_X_ADMIN_TOKEN' => self::ADMIN_TOKEN], content: json_encode($body, \JSON_THROW_ON_ERROR));
 
         return $this->client->getResponse()->getStatusCode();
     }

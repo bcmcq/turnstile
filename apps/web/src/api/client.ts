@@ -26,11 +26,13 @@ export class ApiError extends Error {
 }
 
 const BASE = import.meta.env.VITE_API_URL
+// Scale, autoscale and reset need it; sending it on every call keeps the client dumb about which ones.
+const ADMIN = import.meta.env.VITE_ADMIN_TOKEN
 
 async function request<T>(method: 'GET' | 'POST' | 'PUT', path: string, body?: unknown): Promise<T> {
   const res = await fetch(`${BASE}${path}`, {
     method,
-    headers: body === undefined ? {} : { 'Content-Type': 'application/json' },
+    headers: { ...(body === undefined ? {} : { 'Content-Type': 'application/json' }), ...(ADMIN ? { 'X-Admin-Token': ADMIN } : {}) },
     body: body === undefined ? undefined : JSON.stringify(body),
   })
   if (!res.ok) {

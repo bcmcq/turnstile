@@ -18,7 +18,7 @@ final class HttpScalerClient implements ScalerClientInterface
     {
         try {
             $r = $this->http->request('POST', $this->scalerUrl . '/scale', ['json' => ['workers' => $workers], 'timeout' => 10, 'max_duration' => 60]);
-            /** @var array{target?: int, before?: int, after?: int, workers?: list<array{name: string, state: string}>, error?: string} $body */
+            /** @var array{target?: int, before?: int, workers?: list<array{name: string, state: string}>, error?: string} $body */
             $body = $r->toArray(false);
             if ($r->getStatusCode() >= 400) {
                 throw new ScalerException($body['error'] ?? 'scaler error');
@@ -27,7 +27,7 @@ final class HttpScalerClient implements ScalerClientInterface
             throw new ScalerException('scaler unreachable: ' . $e->getMessage(), 0, $e);
         }
 
-        return new ScaleResult((int) ($body['target'] ?? $workers), (int) ($body['before'] ?? 0), (int) ($body['after'] ?? 0), self::names($body['workers'] ?? []));
+        return new ScaleResult((int) ($body['target'] ?? $workers), (int) ($body['before'] ?? 0), self::names($body['workers'] ?? []));
     }
 
     #[\Override]

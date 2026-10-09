@@ -14,6 +14,7 @@ services:
             string $scalerUrl: '%env(SCALER_URL)%'
             string $workerId: '%env(HOSTNAME)%'
             int $maxWorkers: '%env(int:MAX_WORKERS)%'
+            string $adminToken: '%env(ADMIN_TOKEN)%'
             App\Domain\Venue\ArenaSize $arenaSize: '%env(enum:App\Domain\Venue\ArenaSize:ARENA_SIZE)%'
 
     App\:
@@ -21,3 +22,9 @@ services:
         exclude:
             - '../src/Domain/'
             - '../src/Kernel.php'
+
+when@test:
+    services:
+        # Tests never reach the Docker socket: the controller is exercised against a recording fake.
+        App\Tests\Fake\FakeScalerClient: ~
+        App\Application\Scaling\ScalerClientInterface: '@App\Tests\Fake\FakeScalerClient'

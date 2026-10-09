@@ -10,7 +10,6 @@ final readonly class ScaleResult
     public function __construct(
         public int $target,
         public int $before,
-        public int $after,
         public array $containers,
     ) {
     }

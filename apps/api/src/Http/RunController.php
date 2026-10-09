@@ -18,7 +18,7 @@ use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Symfony\Component\Routing\Attribute\Route;
 
-#[Route('/api/runs')]
+#[Route('/api/runs', requirements: ['id' => '[0-9a-f-]{36}'])]
 final class RunController
 {
     public function __construct(
@@ -42,7 +42,7 @@ final class RunController
         return new JsonResponse(null === $run ? null : $this->views->make($run));
     }
 
-    #[Route('/{id}', name: 'api_runs_show', methods: ['GET'], requirements: ['id' => '[0-9a-f-]{36}'])]
+    #[Route('/{id}', name: 'api_runs_show', methods: ['GET'])]
     public function show(string $id): JsonResponse
     {
         return new JsonResponse($this->views->make($this->runs->find($id) ?? throw new NotFoundHttpException('run not found')));

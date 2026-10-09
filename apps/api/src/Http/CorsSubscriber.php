@@ -40,7 +40,7 @@ final class CorsSubscriber
         $event->getResponse()->headers->add([
             'Access-Control-Allow-Origin' => \in_array($origin, self::ALLOWED_ORIGINS, true) ? $origin : self::ALLOWED_ORIGINS[0],
             'Access-Control-Allow-Methods' => 'GET, POST, PUT, DELETE, OPTIONS',
-            'Access-Control-Allow-Headers' => 'Content-Type, Authorization',
+            'Access-Control-Allow-Headers' => 'Content-Type, Authorization, X-Admin-Token',
             'Access-Control-Max-Age' => '600',
             'Vary' => 'Origin',
         ]);

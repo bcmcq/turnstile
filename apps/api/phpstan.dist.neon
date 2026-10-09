@@ -4,7 +4,8 @@ parameters:
         - src
         - tests
     symfony:
-        containerXmlPath: var/cache/dev/App_KernelDevDebugContainer.xml
+        # The test container: the same services plus the fakes registered under when@test.
+        containerXmlPath: var/cache/test/App_KernelTestDebugContainer.xml
     doctrine:
         objectManagerLoader: tests/object-manager.php
     treatPhpDocTypesAsCertain: false

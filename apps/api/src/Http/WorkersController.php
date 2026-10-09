@@ -35,27 +35,27 @@ final class WorkersController
     }
 
     /** Manual scale: the sidecar clones or stops worker containers; cards appear when their heartbeats start. */
-    #[Route('/scale', name: 'api_workers_scale', methods: ['POST'])]
+    #[Route('/scale', name: 'api_workers_scale', methods: ['POST'], defaults: ['_admin' => true])]
     public function scale(#[MapRequestPayload(acceptFormat: 'json')] ScaleInput $input): JsonResponse
     {
+        if ($input->workers > $this->autoscale->maxWorkers) {
+            throw new UnprocessableEntityHttpException(\sprintf('workers: at most %d (MAX_WORKERS)', $this->autoscale->maxWorkers));
+        }
         if ($this->autoscale->isEnabled()) {
             $this->autoscale->setEnabled(false); // otherwise the next tick undoes the manual choice
             $this->events->push('autoscale.toggled', ['enabled' => false]);
         }
         try {
-            if ($input->workers > $this->autoscale->maxWorkers) {
-                throw new UnprocessableEntityHttpException(\sprintf('workers: at most %d (MAX_WORKERS)', $this->autoscale->maxWorkers));
-            }
             $result = $this->scaler->scale($input->workers);
         } catch (ScalerException $e) {
             throw new ServiceUnavailableHttpException(null, $e->getMessage(), $e);
         }
-        $this->events->push('workers.scaled', ['target' => $result->target, 'before' => $result->before, 'after' => $result->after]);
+        $this->events->push('workers.scaled', ['target' => $result->target, 'before' => $result->before]);
 
         return new JsonResponse($result, 202);
     }
 
-    #[Route('/autoscale', name: 'api_workers_autoscale', methods: ['PUT'])]
+    #[Route('/autoscale', name: 'api_workers_autoscale', methods: ['PUT'], defaults: ['_admin' => true])]
     public function autoscale(#[MapRequestPayload(acceptFormat: 'json')] AutoscaleInput $input): JsonResponse
     {
         $this->autoscale->setEnabled($input->enabled);

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Http;
 
+use App\Application\Scaling\AutoscalePolicy;
 use App\Domain\Ticket\TicketStatus;
 use App\Http\ArenaController;
 use App\Http\DemoController;
@@ -14,9 +15,10 @@ use App\Http\PlatformController;
 use App\Http\RunController;
 use App\Http\WebhookController;
 use App\Http\WorkersController;
+use App\Tests\Fake\FakeScalerClient;
 use PHPUnit\Framework\Attributes\CoversClass;
 
-/** One request per controller against the seeded arena, plus the edges the review called out. Nothing here starts a run or scales. */
+/** One request per controller against the seeded arena, plus the error edges. Nothing here starts a run or touches a real scaler. */
 #[CoversClass(ArenaController::class)]
 #[CoversClass(DemoController::class)]
 #[CoversClass(HealthController::class)]
@@ -56,7 +58,7 @@ final class ControllersTest extends ApiCase
 
     public function testFormEncodedPayloadsAreRefused(): void
     {
-        $this->client->request('POST', '/api/workers/scale', ['workers' => 24], server: ['HTTP_ORIGIN' => 'http://localhost:5173']);
+        $this->client->request('POST', '/api/workers/scale', ['workers' => 24], server: ['HTTP_ORIGIN' => 'http://localhost:5173', 'HTTP_X_ADMIN_TOKEN' => self::ADMIN_TOKEN]);
         self::assertSame(415, $this->client->getResponse()->getStatusCode());
     }
 
@@ -70,7 +72,32 @@ final class ControllersTest extends ApiCase
     public function testWorkersExposeTheAutoscaleBounds(): void
     {
         self::assertSame(200, $this->json('GET', '/api/workers'));
-        self::assertSame(['min' => 2, 'max' => 32], array_intersect_key($this->bodyArray('autoscale'), ['min' => 1, 'max' => 1]));
+        $max = static::getContainer()->get(AutoscalePolicy::class)->maxWorkers;
+        self::assertSame(['min' => 2, 'max' => $max], array_intersect_key($this->bodyArray('autoscale'), ['min' => 1, 'max' => 1]));
+    }
+
+    public function testManualScaleTurnsAutoOffButAnOverLimitRequestLeavesItAlone(): void
+    {
+        $policy = static::getContainer()->get(AutoscalePolicy::class);
+        $fakeId = FakeScalerClient::class; // a variable, so the PHPStan container map (built from dev) is not consulted
+        $scaler = static::getContainer()->get($fakeId);
+        self::assertInstanceOf(FakeScalerClient::class, $scaler);
+        $wasEnabled = $policy->isEnabled(); // Redis is shared with the running stack; put it back afterwards
+        try {
+            $policy->setEnabled(true);
+            self::assertSame(422, $this->json('POST', '/api/workers/scale', ['workers' => $policy->maxWorkers + 1]));
+            self::assertTrue($policy->isEnabled(), 'a rejected request must not switch Auto off');
+            self::assertSame([], $scaler->targets);
+
+            self::assertSame(202, $this->json('POST', '/api/workers/scale', ['workers' => $policy->maxWorkers]));
+            self::assertFalse($policy->isEnabled(), 'a manual scale takes control from the autoscaler');
+            self::assertSame([$policy->maxWorkers], $scaler->targets);
+
+            $this->client->request('POST', '/api/workers/scale', server: ['CONTENT_TYPE' => 'application/json', 'HTTP_ORIGIN' => 'http://localhost:5173'], content: '{"workers":2}');
+            self::assertSame(403, $this->client->getResponse()->getStatusCode(), 'no admin token, no scaling');
+        } finally {
+            $policy->setEnabled($wasEnabled);
+        }
     }
 
     public function testRunValidationAndJobLookups(): void

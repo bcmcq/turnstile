@@ -18,6 +18,7 @@ x-api-image: &api-image
     MERCURE_SUBSCRIBER_JWT_KEY: ${MERCURE_SUBSCRIBER_JWT_KEY:-turnstile-subscriber-demo-key-change-me-0123456789}
     MOCKS_BASE_URL: http://mocks:8090
     SCALER_URL: http://scaler:8070
+    ADMIN_TOKEN: &admin-token ${ADMIN_TOKEN:-turnstile-admin-demo-token}
     # The one ceiling for the + stepper, Auto and the scaler. Set it in .env before first boot; see README → Sizing.
     MAX_WORKERS: &max-workers ${MAX_WORKERS:-32}
     ARENA_SIZE: ${ARENA_SIZE:-demo}
@@ -163,6 +164,7 @@ services:
     environment:
       VITE_API_URL: http://localhost:8080
       VITE_MERCURE_URL: http://localhost:8080/.well-known/mercure
+      VITE_ADMIN_TOKEN: *admin-token
     ports:
       - "5173:5173"
     volumes:
