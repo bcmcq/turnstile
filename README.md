@@ -12,7 +12,7 @@ It exists to show how I handle async workloads: fan-out, retries with backoff, p
 docker compose up
 ```
 
-Then open <http://localhost:5173>. First boot builds the images, runs migrations and seeds the arena. Nothing else to install; `.env.example` only documents the defaults baked into `compose.yaml`, with one you may want to change first (next section).
+Then open <http://localhost:5173>. First boot builds the images, runs migrations and seeds the arena. Nothing else to install; `.env.example` only documents the defaults baked into `compose.yaml`, with two you may want to change first (next section).
 
 ### Sizing it to your machine
 
@@ -25,6 +25,8 @@ cp .env.example .env   # then edit MAX_WORKERS
 ```
 
 Or for a single run: `MAX_WORKERS=8 docker compose up`.
+
+`ARENA_SIZE` picks how densely the arena is seeded: `demo` (default) is the 4,280-seat layout the design was drawn for, `full` is a roughly 49,000-seat crowd for stress-testing the canvas and the fan-out. The venue records which one it was seeded with, so the dashboard sizes its dots from the database. To switch later, edit `.env`, run `docker compose up -d` so the API picks up the new value, then press **Reset** on the dashboard (or `docker compose down -v` for a clean slate), because the seats are already in MySQL.
 
 To raise or lower it later, edit `.env` and run:
 
