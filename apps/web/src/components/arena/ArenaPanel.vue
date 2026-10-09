@@ -3,6 +3,7 @@ import ArenaCanvas from '@/components/arena/ArenaCanvas.vue'
 import Chip from '@/components/ui/Chip.vue'
 import Panel from '@/components/ui/Panel.vue'
 import { fmtInt } from '@/lib/format'
+import { platformTone } from '@/lib/platformTone'
 import { useArenaStore } from '@/stores/arena'
 import { useRunStore } from '@/stores/run'
 
@@ -14,7 +15,7 @@ const run = useRunStore()
   <Panel class="flex-1" :title="`Arena · ${fmtInt(arena.seatCount)} seats · ${arena.sections.length} sections`">
     <template #header>
       <div class="flex items-center gap-2">
-        <Chip v-for="p in arena.platforms" :key="p.code" :label="p.name" :tone="p.code === 'tixhub' ? 'cyan' : p.code === 'seatswap' ? 'violet' : 'amber'" />
+        <Chip v-for="p in arena.platforms" :key="p.code" :label="p.name" :tone="platformTone(p.code)" />
         <Chip label="In flight" tone="orange" />
         <Chip label="Failed" tone="red" />
         <Chip label="Sold" tone="fg" />

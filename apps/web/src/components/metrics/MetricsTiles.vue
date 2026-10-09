@@ -26,7 +26,7 @@ const conflicts = computed(() => run.current?.counters.conflicts ?? 0)
   <div class="grid grid-cols-2 gap-3">
     <MetricTile label="Jobs / sec" :value="metrics.jobsPerSec.toFixed(metrics.jobsPerSec >= 10 ? 0 : 1)" :sub="jobsPeak > 0 ? `peak ${jobsPeak.toFixed(0)}` : undefined" sub-class="text-ok" :series="metrics.series.jobsPerSec" :color="COLORS.cyan" />
     <MetricTile label="In flight" :value="fmtInt(metrics.counts?.in_flight ?? 0)" :sub="`${metrics.workers.length} worker${metrics.workers.length === 1 ? '' : 's'}`" :series="metrics.series.inFlight" :color="COLORS.inflight" />
-    <MetricTile label="Queued" :value="fmtInt(queued)" :sub="retryWait > 0 ? `${fmtInt(retryWait)} in backoff` : (queuedTrend ?? undefined)" :sub-class="retryWait > 0 ? 'text-inflight' : 'text-muted'" :series="metrics.series.queued" color="#a78bfa" />
+    <MetricTile label="Queued" :value="fmtInt(queued)" :sub="retryWait > 0 ? `${fmtInt(retryWait)} in backoff` : (queuedTrend ?? undefined)" :sub-class="retryWait > 0 ? 'text-inflight' : 'text-muted'" :series="metrics.series.queued" :color="COLORS.violet" />
     <MetricTile label="Failed" :value="fmtInt(failed)" :sub="failed > 0 ? `${fmtInt(failed)} in DLQ` : conflicts > 0 ? `${fmtInt(conflicts)} conflicts` : undefined" :sub-class="failed > 0 ? 'text-fail' : 'text-passmarket'" :series="metrics.series.failed" :color="COLORS.fail" />
   </div>
 </template>

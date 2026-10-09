@@ -2,6 +2,8 @@
 import { computed } from 'vue'
 import { TicketState } from '@/api/types'
 import type { ChipTone } from '@/components/ui/Chip.vue'
+import { COLORS } from '@/lib/arenaPalette'
+import { platformTone } from '@/lib/platformTone'
 import Chip from '@/components/ui/Chip.vue'
 import { fmtMoney } from '@/lib/format'
 import type { SeatTable } from '@/lib/seatTable'
@@ -55,12 +57,9 @@ const overlayChip = computed<{ label: string; tone: ChipTone } | null>(() => {
 })
 const inSelection = computed(() => arena.selectedTickets.has(ticketId.value) || arena.selectedSections.has(props.seats.sectionId[props.index]))
 
-function platformTone(code: string | undefined): ChipTone {
-  return code === 'tixhub' ? 'cyan' : code === 'seatswap' ? 'violet' : code === 'passmarket' ? 'amber' : 'muted'
-}
 
 const sectionLabel = computed(() => `Sec ${section.value?.code ?? '?'}`)
-const dotColor = computed(() => (state.value === TicketState.Listed ? (platform.value?.color ?? '#243040') : state.value === TicketState.Sold ? '#e6edf3' : state.value === TicketState.Closed ? '#151c26' : '#243040'))
+const dotColor = computed(() => (state.value === TicketState.Listed ? (platform.value?.color ?? COLORS.seat) : state.value === TicketState.Sold ? COLORS.sold : state.value === TicketState.Closed ? COLORS.seatClosed : COLORS.seat))
 
 /** Keep the card inside the canvas: flip left/up near the edges. */
 const style = computed(() => {

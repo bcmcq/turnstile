@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { COLORS } from '@/lib/arenaPalette'
 import { computed } from 'vue'
 import type { PlatformGauge } from '@/api/types'
 import { fmtInt } from '@/lib/format'
@@ -10,7 +11,7 @@ const props = defineProps<{
 const fraction = computed(() => (props.gauge.capacity ? props.gauge.remainingTokens / props.gauge.capacity : 0))
 const saturated = computed(() => fraction.value <= 0.05)
 const pacing = computed(() => fraction.value < 0.25 && !saturated.value)
-const barColor = computed(() => (saturated.value ? '#f87171' : props.gauge.color))
+const barColor = computed(() => (saturated.value ? COLORS.fail : props.gauge.color))
 /** Vendor limit in requests per second; the bar is the client bucket, the numbers read in the vendor's units. */
 const perSec = computed(() => Math.max(1, Math.round(props.gauge.rateLimitPerMin / 60)))
 const availablePerSec = computed(() => Math.round(fraction.value * perSec.value))

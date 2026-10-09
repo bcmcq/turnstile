@@ -1,6 +1,6 @@
 @import "tailwindcss";
 
-/* Design tokens from the Figma frames. */
+/* Design tokens from the Figma frames. COLORS in src/lib/arenaPalette.ts mirrors these for canvas code. */
 @theme {
   --color-bg: #0a0e13;
   --color-panel: #111721;
@@ -36,7 +36,7 @@ button:not(:disabled):hover, [role="switch"]:not(:disabled):hover, select:hover 
 .range-slider::-webkit-slider-runnable-track {
   height: 4px;
   border-radius: 2px;
-  background: linear-gradient(to right, var(--c) var(--pct), #2a3644 var(--pct));
+  background: linear-gradient(to right, var(--c) var(--pct), var(--color-dim) var(--pct));
 }
 .range-slider::-webkit-slider-thumb {
   appearance: none;
@@ -44,18 +44,18 @@ button:not(:disabled):hover, [role="switch"]:not(:disabled):hover, select:hover 
   width: 14px;
   height: 14px;
   border-radius: 999px;
-  background: #e6edf3;
+  background: var(--color-fg);
   border: 2px solid var(--c);
 }
 .range-slider::-moz-range-track {
   height: 4px;
   border-radius: 2px;
-  background: linear-gradient(to right, var(--c) var(--pct), #2a3644 var(--pct));
+  background: linear-gradient(to right, var(--c) var(--pct), var(--color-dim) var(--pct));
 }
 .range-slider::-moz-range-thumb {
   width: 14px;
   height: 14px;
   border-radius: 999px;
-  background: #e6edf3;
+  background: var(--color-fg);
   border: 2px solid var(--c);
 }

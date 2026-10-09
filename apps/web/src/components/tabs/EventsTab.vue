@@ -3,9 +3,11 @@ import { computed, ref } from 'vue'
 import JobTracePopover from '@/components/tabs/JobTracePopover.vue'
 import Chip from '@/components/ui/Chip.vue'
 import type { ChipTone } from '@/components/ui/Chip.vue'
+import { platformTone } from '@/lib/platformTone'
 import Label from '@/components/ui/Label.vue'
 import Sparkline from '@/components/metrics/Sparkline.vue'
 import { COLORS } from '@/lib/arenaPalette'
+import { isPlatformCode } from '@/api/types'
 import { describeEvent, fmtEventTime, toneClass } from '@/lib/eventText'
 import { fmtInt } from '@/lib/format'
 import { useArenaStore } from '@/stores/arena'
@@ -31,16 +33,19 @@ const replay = computed(() => {
   return { reenqueued: r.totalJobs, prevented: r.counters.skipped, movedTwice: r.counters.completed, done: !['pending', 'dispatching', 'running', 'paused'].includes(r.status) }
 })
 
-function platformTone(code: string | null, ticketId: number | null): ChipTone | null {
-  let c = code
-  if (!c && ticketId !== null && arena.seats) {
-    const i = arena.seats.indexOf(ticketId)
-    if (i !== undefined) c = arena.platformById.get(arena.seats.platformId[i])?.code ?? null
-  }
-  return c === 'tixhub' ? 'cyan' : c === 'seatswap' ? 'violet' : c === 'passmarket' ? 'amber' : c === 'house' ? 'muted' : null
+/** The event's platform, or the seat's current one when the event carries none. */
+function platformOf(code: string | null, ticketId: number | null): string | null {
+  if (code) return code
+  if (ticketId === null || !arena.seats) return null
+  const i = arena.seats.indexOf(ticketId)
+  return i === undefined ? null : (arena.platformById.get(arena.seats.platformId[i])?.code ?? null)
+}
+const toneOf = (code: string | null, ticketId: number | null): ChipTone | null => {
+  const c = platformOf(code, ticketId)
+  return c === null ? null : platformTone(c)
 }
 function platformName(code: string | null, ticketId: number | null): string {
-  if (code && code !== 'house') return arena.platformByCode.get(code as never)?.name ?? code
+  if (code && isPlatformCode(code)) return arena.platformByCode.get(code)?.name ?? code
   if (code === 'house') return 'house'
   if (ticketId !== null && arena.seats) {
     const i = arena.seats.indexOf(ticketId)
@@ -74,7 +79,7 @@ function platformName(code: string | null, ticketId: number | null): string {
     <ul class="min-h-0 flex-1 divide-y divide-border overflow-y-auto">
       <li v-for="r in rows" :key="r.key" class="flex items-center gap-2 py-1 text-[11px]">
         <span class="w-[74px] shrink-0 text-[10px] text-muted tabular-nums">{{ r.time }}</span>
-        <Chip v-if="platformTone(r.platform, r.ticketId)" :label="platformName(r.platform, r.ticketId)" :tone="platformTone(r.platform, r.ticketId) ?? 'muted'" />
+        <Chip v-if="toneOf(r.platform, r.ticketId)" :label="platformName(r.platform, r.ticketId)" :tone="toneOf(r.platform, r.ticketId) ?? 'muted'" />
         <span class="min-w-0 flex-1 truncate font-medium" :class="toneClass[r.tone]" :title="r.text">{{ r.text }}</span>
         <button v-if="r.ticketId !== null" type="button" class="shrink-0 text-[10px] text-muted tabular-nums hover:text-tixhub" :title="`Attempt trace for ticket ${r.ticketId}`" @click="traceTicket = r.ticketId">TKT-{{ r.ticketId }}</button>
         <span v-if="r.attempt" class="w-8 shrink-0 text-right text-[10px] text-muted tabular-nums">{{ r.attempt }}</span>

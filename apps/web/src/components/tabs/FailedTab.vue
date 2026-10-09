@@ -6,6 +6,7 @@ import JobTracePopover from '@/components/tabs/JobTracePopover.vue'
 import Button from '@/components/ui/Button.vue'
 import Chip from '@/components/ui/Chip.vue'
 import type { ChipTone } from '@/components/ui/Chip.vue'
+import { platformTone } from '@/lib/platformTone'
 import { jobReason } from '@/lib/format'
 import { useArenaStore } from '@/stores/arena'
 import { useRunStore } from '@/stores/run'
@@ -44,11 +45,11 @@ watch([deadLettered, () => run.current?.id], () => {
   timer = setTimeout(load, 600) // counters tick fast under chaos; coalesce
 })
 onMounted(load)
+onBeforeUnmount(() => {
+  if (timer) clearTimeout(timer)
+})
 
-function platformTone(id: number | null): ChipTone {
-  const code = id === null ? null : arena.platformById.get(id)?.code
-  return code === 'tixhub' ? 'cyan' : code === 'seatswap' ? 'violet' : code === 'passmarket' ? 'amber' : 'muted'
-}
+const toneOf = (id: number | null): ChipTone => platformTone(id === null ? null : arena.platformById.get(id)?.code)
 function platformName(id: number | null): string {
   return id === null ? 'house' : (arena.platformById.get(id)?.name ?? '?')
 }
@@ -77,7 +78,7 @@ defineExpose({ reload: load })
     <ul v-else class="min-h-0 flex-1 divide-y divide-border overflow-y-auto">
       <li v-for="job in jobs" :key="job.id" class="flex items-center gap-2.5 py-1.5 text-[11px]">
         <button type="button" class="w-[76px] text-left font-medium hover:text-tixhub" :title="`Attempt trace for job ${job.id}`" @click="traceId = job.id">TKT-{{ job.ticketId }}</button>
-        <Chip :label="platformName(job.platformId)" :tone="platformTone(job.platformId)" />
+        <Chip :label="platformName(job.platformId)" :tone="toneOf(job.platformId)" />
         <span class="flex-1 truncate text-muted" :title="job.lastError ?? ''">{{ jobReason(job) }}</span>
         <Button size="sm" :busy="retrying === job.id" @click="retryOne(job)">Retry</Button>
       </li>

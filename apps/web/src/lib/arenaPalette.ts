@@ -18,6 +18,7 @@ export function fillSeat(ctx: CanvasRenderingContext2D, x: number, y: number, w:
   ctx.fill()
 }
 
+/** Canvas and inline-style colors. Mirrors the @theme tokens in style.css, which Tailwind needs as CSS; keep the two in step. */
 export const COLORS = {
   bg: '#0a0e13',
   panel: '#111721',
@@ -34,6 +35,7 @@ export const COLORS = {
   fail: '#f87171',
   amber: '#fbbf24',
   cyan: '#22d3ee',
+  violet: '#a78bfa',
 } as const
 
 /**

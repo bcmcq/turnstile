@@ -2,7 +2,9 @@
  * Mirrors the PHP response DTOs one to one (apps/api/src/Application/**\/Dto). Change both sides together.
  */
 
-export type PlatformCode = 'tixhub' | 'seatswap' | 'passmarket'
+export const PLATFORM_CODES = ['tixhub', 'seatswap', 'passmarket'] as const
+export type PlatformCode = (typeof PLATFORM_CODES)[number]
+export const isPlatformCode = (v: string): v is PlatformCode => (PLATFORM_CODES as readonly string[]).includes(v)
 export type SectionTier = 'floor' | 'lower' | 'upper'
 export type SectionStatus = 'open' | 'closed'
 export type RunType = 'fill' | 'transfer' | 'release' | 'reprice' | 'regenerate' | 'close_section' | 'open_section' | 'replay'
@@ -242,7 +244,6 @@ export interface ApiProblem {
 export interface ScaleResult {
   target: number
   before: number
-  after: number
   containers: string[]
 }
 
