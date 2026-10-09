@@ -12,7 +12,7 @@ final readonly class PlatformGauge
         public string $color,
         public int $remainingTokens,
         public int $capacity,
-        public int $tokensPerSec,
+        public float $tokensPerSec,
         public int $rateLimitPerMin,
         public int $calls,
         public int $ok,

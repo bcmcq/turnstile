@@ -23,6 +23,7 @@ final class ClientRateLimiter
     public const int DEFAULT_RPM = 3_000;
     public const float PACE_RATIO = 0.8;
     private const int BURST_SECONDS = 5;
+    private const int MAX_REFILL_SECONDS = 5;
     private const string BUCKET = 'shared';
     private const string FOLLOW_KEY = 'pacing:follow';
     private const float FLAG_TTL = 2.0;
@@ -54,14 +55,26 @@ final class ClientRateLimiter
         return $this->factory($code)->create(self::BUCKET)->consume(0)->getRemainingTokens();
     }
 
-    public function tokensPerSec(PlatformCode $code): int
+    /** Refill per minute; the bucket is defined in the vendor's unit so low limits do not round up to 1/s. */
+    public function tokensPerMin(PlatformCode $code): int
     {
-        return max(1, (int) round($this->paceRpm($code) / 60 * self::PACE_RATIO));
+        return max(1, (int) round($this->paceRpm($code) * self::PACE_RATIO));
+    }
+
+    public function tokensPerSec(PlatformCode $code): float
+    {
+        return $this->tokensPerMin($code) / 60;
     }
 
     public function capacity(PlatformCode $code): int
     {
-        return $this->tokensPerSec($code) * self::BURST_SECONDS;
+        return max(1, (int) round($this->tokensPerSec($code) * self::BURST_SECONDS));
+    }
+
+    /** A changed limit starts a fresh, full bucket; empty it so the new rate applies from the first call. */
+    public function drain(PlatformCode $code): void
+    {
+        $this->factory($code)->create(self::BUCKET)->consume($this->capacity($code));
     }
 
     /** The rpm the client paces against: the vendor's current limit, or the default when not following. */
@@ -88,13 +101,33 @@ final class ClientRateLimiter
         $this->followReadAt = microtime(true);
     }
 
+    /**
+     * The bucket refills in whole intervals (floor(elapsed / interval) × amount), so the interval must stay short:
+     * the shortest whole-second one that keeps the amount an integer, capped at MAX_REFILL_SECONDS and rounded there.
+     *
+     * @return array{int, int} seconds, tokens per interval
+     */
+    public static function refill(int $perMin): array
+    {
+        $divisor = 60;
+        for ($a = $perMin; 0 !== $a; [$divisor, $a] = [$a, $divisor % $a]) {
+        }
+        $seconds = intdiv(60, $divisor);
+        if ($seconds > self::MAX_REFILL_SECONDS) {
+            $seconds = self::MAX_REFILL_SECONDS;
+        }
+
+        return [$seconds, max(1, (int) round($perMin * $seconds / 60))];
+    }
+
     private function factory(PlatformCode $code): RateLimiterFactory
     {
-        $perSec = $this->tokensPerSec($code);
-        $id = \sprintf('platform_%s_%d', $code->value, $perSec);
+        $perMin = $this->tokensPerMin($code);
+        [$seconds, $amount] = self::refill($perMin);
+        $id = \sprintf('platform_%s_%d', $code->value, $perMin);
 
         return $this->factories[$id] ??= new RateLimiterFactory(
-            ['id' => $id, 'policy' => 'token_bucket', 'limit' => $perSec * self::BURST_SECONDS, 'rate' => ['interval' => '1 second', 'amount' => $perSec]],
+            ['id' => $id, 'policy' => 'token_bucket', 'limit' => $this->capacity($code), 'rate' => ['interval' => $seconds . ' seconds', 'amount' => $amount]],
             new CacheStorage($this->cache),
         );
     }

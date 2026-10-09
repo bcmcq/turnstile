@@ -57,6 +57,7 @@ final class PlatformController
     {
         foreach ($this->codes($code) as $c) {
             $this->platforms->setRateLimit($c, $input->rpm);
+            $this->limiter->drain($c);
         }
 
         return new JsonResponse(['rpm' => $input->rpm, 'platforms' => array_map(static fn (PlatformCode $c): string => $c->value, $this->codes($code))]);

@@ -47,7 +47,7 @@ final class SnapshotBuilder
                 color: $p->code->color(),
                 remainingTokens: max(0, $this->limiter->remaining($p->code)),
                 capacity: $this->limiter->capacity($p->code),
-                tokensPerSec: $this->limiter->tokensPerSec($p->code),
+                tokensPerSec: round($this->limiter->tokensPerSec($p->code), 2),
                 rateLimitPerMin: $p->rateLimitPerMin,
                 calls: $s['calls'],
                 ok: $s['ok'],
